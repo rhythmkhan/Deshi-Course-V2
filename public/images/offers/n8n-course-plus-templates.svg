@@ -1,0 +1,27 @@
+<svg width="1200" height="800" viewBox="0 0 1200 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="800" rx="48" fill="#F8FAFC"/>
+  <rect x="42" y="42" width="1116" height="716" rx="36" fill="url(#paint0_linear_3_4)"/>
+  <circle cx="954" cy="192" r="118" fill="#8B5CF6" fill-opacity="0.12"/>
+  <circle cx="260" cy="638" r="152" fill="#F97316" fill-opacity="0.12"/>
+  <rect x="116" y="108" width="250" height="54" rx="27" fill="#4F46E5"/>
+  <text x="156" y="144" fill="white" font-family="Arial, sans-serif" font-size="26" font-weight="700">Bundle Offer</text>
+  <text x="116" y="244" fill="#0F172A" font-family="Arial, sans-serif" font-size="70" font-weight="700">n8n Course</text>
+  <text x="116" y="316" fill="#7C3AED" font-family="Arial, sans-serif" font-size="70" font-weight="700">+ Templates</text>
+  <text x="116" y="380" fill="#475569" font-family="Arial, sans-serif" font-size="28">Course access with ready-made workflow library</text>
+  <rect x="706" y="178" width="324" height="438" rx="34" fill="#0F172A"/>
+  <rect x="748" y="222" width="240" height="84" rx="24" fill="#1E293B"/>
+  <rect x="782" y="248" width="112" height="18" rx="9" fill="#8B5CF6"/>
+  <rect x="748" y="336" width="240" height="84" rx="24" fill="#1E293B"/>
+  <rect x="782" y="362" width="154" height="18" rx="9" fill="#22C55E"/>
+  <rect x="748" y="450" width="240" height="84" rx="24" fill="#1E293B"/>
+  <rect x="782" y="476" width="132" height="18" rx="9" fill="#F97316"/>
+  <path d="M640 324C640 296.386 662.386 274 690 274C717.614 274 740 296.386 740 324C740 351.614 717.614 374 690 374C662.386 374 640 351.614 640 324Z" fill="#0F172A"/>
+  <path d="M690 300V348" stroke="white" stroke-width="14" stroke-linecap="round"/>
+  <path d="M666 324H714" stroke="white" stroke-width="14" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="paint0_linear_3_4" x1="78" y1="74" x2="1112" y2="740" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EEF2FF"/>
+      <stop offset="1" stop-color="#E0F2FE"/>
+    </linearGradient>
+  </defs>
+</svg>

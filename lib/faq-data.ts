@@ -1,0 +1,47 @@
+export interface FaqItem {
+  question: string;
+  answer: string;
+}
+
+export const FAQ_ITEMS: FaqItem[] = [
+  {
+    question: 'কিভাবে একটি কোর্স কিনব?',
+    answer:
+      'আপনার পছন্দের কোর্সের details page-এ গিয়ে সাইন ইন করুন, তারপর enrolment বা payment step complete করলেই কোর্সটি আপনার dashboard-এ যোগ হয়ে যাবে।',
+  },
+  {
+    question: 'পেমেন্ট করার কতক্ষণ পর কোর্স পাব?',
+    answer:
+      'সফল payment-এর পর সাধারণত সাথে সাথেই course access চালু হয়ে যায়। কোনো delay হলে সাপোর্ট টিম দ্রুত verify করে access enable করে দেয়।',
+  },
+  {
+    question: 'সার্টিফিকেট কিভাবে ডাউনলোড করব?',
+    answer:
+      'কোর্সের required lessons, assignments এবং final completion criteria পূরণ করলে dashboard থেকে certificate download option দেখতে পাবেন।',
+  },
+  {
+    question: 'কোর্সটি কি লাইফটাইম এক্সেস পাব?',
+    answer:
+      'হ্যাঁ, বেশিরভাগ course-এ long-term access থাকে যাতে আপনি নিজের pace-এ revision করতে পারেন। নির্দিষ্ট course policy details page-এও উল্লেখ থাকে।',
+  },
+  {
+    question: 'লাইভ সাপোর্ট বা মেন্টর ফিডব্যাক কি থাকবে?',
+    answer:
+      'selected course-এ লাইভ Q&A, mentor guidance এবং assignment feedback system থাকে। course অনুযায়ী support format কিছুটা ভিন্ন হতে পারে।',
+  },
+  {
+    question: 'মোবাইল দিয়েও কি কোর্স করা যাবে?',
+    answer:
+      'হ্যাঁ, mobile থেকে content দেখা যাবে। তবে assignment, project এবং কিছু tools-based practice-এর জন্য laptop বা desktop ব্যবহার করলে ভালো experience পাবেন।',
+  },
+  {
+    question: 'আমি যদি beginner হই, তাহলে কি কোর্স করতে পারব?',
+    answer:
+      'অবশ্যই। আমরা beginner, intermediate এবং advanced level আলাদা করে course structure দিই যাতে আপনি নিজের skill level অনুযায়ী শুরু করতে পারেন।',
+  },
+  {
+    question: 'কোর্স শেষ করে career support পাওয়া যাবে?',
+    answer:
+      'হ্যাঁ, selected program-এ CV guidance, mock interview, portfolio advice এবং career direction support available থাকে।',
+  },
+];

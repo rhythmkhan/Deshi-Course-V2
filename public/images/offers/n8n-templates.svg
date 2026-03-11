@@ -1,0 +1,26 @@
+<svg width="1200" height="800" viewBox="0 0 1200 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="800" rx="48" fill="#020617"/>
+  <rect x="38" y="38" width="1124" height="724" rx="36" fill="url(#paint0_linear_5_6)"/>
+  <circle cx="938" cy="180" r="120" fill="#38BDF8" fill-opacity="0.12"/>
+  <circle cx="214" cy="630" r="158" fill="#A855F7" fill-opacity="0.12"/>
+  <rect x="120" y="118" width="264" height="54" rx="27" fill="white" fill-opacity="0.14"/>
+  <text x="156" y="153" fill="white" font-family="Arial, sans-serif" font-size="25" font-weight="700">Template Library</text>
+  <text x="120" y="264" fill="white" font-family="Arial, sans-serif" font-size="72" font-weight="700">n8n 20K+</text>
+  <text x="120" y="334" fill="#C084FC" font-family="Arial, sans-serif" font-size="72" font-weight="700">Templates</text>
+  <text x="120" y="398" fill="#CBD5E1" font-family="Arial, sans-serif" font-size="28">Lead, CRM, Ecommerce and Marketing packs</text>
+  <rect x="668" y="172" width="366" height="456" rx="34" fill="#0F172A" fill-opacity="0.78" stroke="#94A3B8" stroke-opacity="0.22" stroke-width="2"/>
+  <rect x="716" y="226" width="270" height="60" rx="20" fill="#111827"/>
+  <rect x="748" y="247" width="132" height="18" rx="9" fill="#38BDF8"/>
+  <rect x="716" y="316" width="270" height="60" rx="20" fill="#111827"/>
+  <rect x="748" y="337" width="168" height="18" rx="9" fill="#A855F7"/>
+  <rect x="716" y="406" width="270" height="60" rx="20" fill="#111827"/>
+  <rect x="748" y="427" width="124" height="18" rx="9" fill="#22C55E"/>
+  <rect x="716" y="496" width="270" height="60" rx="20" fill="#111827"/>
+  <rect x="748" y="517" width="178" height="18" rx="9" fill="#F97316"/>
+  <defs>
+    <linearGradient id="paint0_linear_5_6" x1="76" y1="74" x2="1120" y2="738" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111827"/>
+      <stop offset="1" stop-color="#172554"/>
+    </linearGradient>
+  </defs>
+</svg>

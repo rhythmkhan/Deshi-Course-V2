@@ -1,0 +1,328 @@
+import 'server-only';
+import {
+  createTelegramInviteLinkForCourse,
+  createTelegramSupportInviteLinkForCourse,
+  createTelegramSupportInviteLinkForOrderAndCourse,
+  createTelegramTemplateInviteLinkForCourse,
+  type TelegramCourseTrack,
+} from '@/lib/telegram';
+
+export type DeliveryTrack = TelegramCourseTrack;
+export type DeliveryResource = 'course' | 'support' | 'template';
+
+export interface DeliveryItem {
+  itemType: 'course' | 'bundle' | 'shop';
+  slug: string;
+  title: string;
+}
+
+export interface DeliveryLink {
+  track: DeliveryTrack;
+  resource: DeliveryResource;
+  label: string;
+  url: string;
+}
+
+type StoredTrackLinks = Partial<Record<DeliveryResource, string>> & {
+  courseCreatedAt?: number;
+  supportCreatedAt?: number;
+  templateCreatedAt?: number;
+};
+
+type StoredDeliveryLinks = Partial<Record<DeliveryTrack, StoredTrackLinks>>;
+
+const DELIVERY_RULES: Array<{
+  track: DeliveryTrack;
+  itemType: DeliveryItem['itemType'];
+  slug: string;
+  resources: DeliveryResource[];
+}> = [
+  {
+    track: 'n8n',
+    itemType: 'course',
+    slug: 'n8n-automation-mastery',
+    resources: ['course', 'support'],
+  },
+  {
+    track: 'n8n',
+    itemType: 'bundle',
+    slug: 'n8n-course-plus-templates',
+    resources: ['course', 'support', 'template'],
+  },
+  {
+    track: 'n8n',
+    itemType: 'shop',
+    slug: 'n8n-20k-templates',
+    resources: ['template'],
+  },
+  {
+    track: 'vibe',
+    itemType: 'course',
+    slug: 'vibe-coding-mastery',
+    resources: ['course', 'support'],
+  },
+  {
+    track: 'vibe',
+    itemType: 'bundle',
+    slug: 'vibe-coding-prompt-library',
+    resources: ['course', 'support', 'template'],
+  },
+  {
+    track: 'vibe',
+    itemType: 'shop',
+    slug: 'prompt-ui-library',
+    resources: ['template'],
+  },
+];
+
+function getCreatedAtKey(resource: DeliveryResource) {
+  if (resource === 'course') {
+    return 'courseCreatedAt';
+  }
+
+  if (resource === 'support') {
+    return 'supportCreatedAt';
+  }
+
+  return 'templateCreatedAt';
+}
+
+function cloneStoredTrackLinks(input?: StoredTrackLinks): StoredTrackLinks {
+  return {
+    ...(input?.course ? { course: input.course } : {}),
+    ...(input?.support ? { support: input.support } : {}),
+    ...(input?.template ? { template: input.template } : {}),
+    ...(typeof input?.courseCreatedAt === 'number'
+      ? { courseCreatedAt: input.courseCreatedAt }
+      : {}),
+    ...(typeof input?.supportCreatedAt === 'number'
+      ? { supportCreatedAt: input.supportCreatedAt }
+      : {}),
+    ...(typeof input?.templateCreatedAt === 'number'
+      ? { templateCreatedAt: input.templateCreatedAt }
+      : {}),
+  };
+}
+
+function normalizeStoredDeliveryLinks(input: unknown): StoredDeliveryLinks {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    return {};
+  }
+
+  const raw = input as Record<string, unknown>;
+  const output: StoredDeliveryLinks = {};
+
+  for (const track of ['n8n', 'vibe'] as const) {
+    const value = raw[track];
+
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      continue;
+    }
+
+    const trackValue = value as Record<string, unknown>;
+    output[track] = {
+      ...(typeof trackValue.course === 'string' ? { course: trackValue.course } : {}),
+      ...(typeof trackValue.support === 'string'
+        ? { support: trackValue.support }
+        : {}),
+      ...(typeof trackValue.template === 'string'
+        ? { template: trackValue.template }
+        : {}),
+      ...(typeof trackValue.courseCreatedAt === 'number'
+        ? { courseCreatedAt: trackValue.courseCreatedAt }
+        : {}),
+      ...(typeof trackValue.supportCreatedAt === 'number'
+        ? { supportCreatedAt: trackValue.supportCreatedAt }
+        : {}),
+      ...(typeof trackValue.templateCreatedAt === 'number'
+        ? { templateCreatedAt: trackValue.templateCreatedAt }
+        : {}),
+    };
+  }
+
+  return output;
+}
+
+function getResourceLabel(track: DeliveryTrack, resource: DeliveryResource) {
+  const prefix = track === 'vibe' ? 'Vibe Coding' : 'n8n Automation';
+
+  if (resource === 'course') {
+    return `${prefix} Telegram channel`;
+  }
+
+  if (resource === 'support') {
+    return `${prefix} support group`;
+  }
+
+  return `${prefix} resource library`;
+}
+
+function flattenStoredDeliveryLinks(storedLinks: StoredDeliveryLinks): DeliveryLink[] {
+  const output: DeliveryLink[] = [];
+
+  for (const track of ['n8n', 'vibe'] as const) {
+    const trackLinks = storedLinks[track];
+
+    if (!trackLinks) {
+      continue;
+    }
+
+    for (const resource of ['course', 'support', 'template'] as const) {
+      const url = trackLinks[resource];
+
+      if (!url) {
+        continue;
+      }
+
+      output.push({
+        track,
+        resource,
+        label: getResourceLabel(track, resource),
+        url,
+      });
+    }
+  }
+
+  return output;
+}
+
+function buildJoinedLinks(
+  links: DeliveryLink[],
+  resource: DeliveryResource,
+) {
+  return links
+    .filter((link) => link.resource === resource)
+    .map((link) => `${link.label}: ${link.url}`)
+    .join('\n');
+}
+
+export function resolveDeliveryRequirements(items: DeliveryItem[]) {
+  const requirements = new Map<DeliveryTrack, Set<DeliveryResource>>();
+
+  for (const item of items) {
+    const rule = DELIVERY_RULES.find(
+      (entry) => entry.itemType === item.itemType && entry.slug === item.slug,
+    );
+
+    if (!rule) {
+      continue;
+    }
+
+    const trackResources =
+      requirements.get(rule.track) ?? new Set<DeliveryResource>();
+
+    for (const resource of rule.resources) {
+      trackResources.add(resource);
+    }
+
+    requirements.set(rule.track, trackResources);
+  }
+
+  return requirements;
+}
+
+export function getDeliveryLinksFromMetadata(metadata: Record<string, unknown>) {
+  const storedLinks = normalizeStoredDeliveryLinks(metadata.deliveryLinks);
+  return flattenStoredDeliveryLinks(storedLinks);
+}
+
+export function getDeliverySheetValues(links: DeliveryLink[]) {
+  return {
+    courseLinks: buildJoinedLinks(links, 'course'),
+    supportLinks: buildJoinedLinks(links, 'support'),
+    templateLinks: buildJoinedLinks(links, 'template'),
+  };
+}
+
+export async function ensureTelegramDeliveryLinks({
+  orderId,
+  items,
+  metadata,
+}: {
+  orderId: string;
+  items: DeliveryItem[];
+  metadata: Record<string, unknown>;
+}) {
+  const requirements = resolveDeliveryRequirements(items);
+  const storedLinks = normalizeStoredDeliveryLinks(metadata.deliveryLinks);
+  const nextStoredLinks: StoredDeliveryLinks = {
+    ...(storedLinks.n8n ? { n8n: cloneStoredTrackLinks(storedLinks.n8n) } : {}),
+    ...(storedLinks.vibe ? { vibe: cloneStoredTrackLinks(storedLinks.vibe) } : {}),
+  };
+  const errors: string[] = [];
+  let changed = false;
+
+  for (const [track, resources] of requirements.entries()) {
+    const trackLinks = cloneStoredTrackLinks(nextStoredLinks[track]);
+
+    for (const resource of resources) {
+      if (trackLinks[resource]) {
+        continue;
+      }
+
+      const inviteResult =
+        resource === 'course'
+          ? await createTelegramInviteLinkForCourse(track)
+          : resource === 'template'
+            ? await createTelegramTemplateInviteLinkForCourse(track)
+            : await createTelegramSupportInviteLinkForOrderAndCourse(orderId, track);
+
+      if (
+        resource === 'support' &&
+        (!inviteResult.success || !inviteResult.inviteLink)
+      ) {
+        const fallbackInvite = await createTelegramSupportInviteLinkForCourse(track);
+
+        if (fallbackInvite.success && fallbackInvite.inviteLink) {
+          trackLinks.support = fallbackInvite.inviteLink;
+          trackLinks.supportCreatedAt = Date.now();
+          changed = true;
+          continue;
+        }
+
+        if (fallbackInvite.error) {
+          errors.push(fallbackInvite.error);
+        }
+
+        if (inviteResult.error) {
+          errors.push(inviteResult.error);
+        }
+
+        continue;
+      }
+
+      if (inviteResult.success && inviteResult.inviteLink) {
+        trackLinks[resource] = inviteResult.inviteLink;
+        trackLinks[getCreatedAtKey(resource)] = Date.now();
+        changed = true;
+      } else if (inviteResult.error) {
+        errors.push(inviteResult.error);
+      }
+    }
+
+    if (Object.keys(trackLinks).length > 0) {
+      nextStoredLinks[track] = trackLinks;
+    }
+  }
+
+  const links = flattenStoredDeliveryLinks(nextStoredLinks);
+  const nextMetadata: Record<string, unknown> =
+    changed || metadata.deliveryLinks
+      ? {
+          ...metadata,
+          deliveryLinks: nextStoredLinks,
+          telegramInviteLink:
+            buildJoinedLinks(links, 'course') ||
+            buildJoinedLinks(links, 'template'),
+          supportTelegramInviteLink: buildJoinedLinks(links, 'support'),
+          templateTelegramInviteLink: buildJoinedLinks(links, 'template'),
+        }
+      : metadata;
+
+  return {
+    links,
+    metadata: nextMetadata,
+    changed,
+    errors,
+  };
+}
