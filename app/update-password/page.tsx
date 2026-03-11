@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { AlertCircle, ArrowRight, LoaderCircle, Lock } from 'lucide-react';
 import { motion } from 'motion/react';
 import BrandLogo from '@/components/BrandLogo';
-import { createClient } from '@/lib/supabase/browser';
+import { createClient, isBrowserSupabaseConfigured } from '@/lib/supabase/browser';
 
 export default function UpdatePasswordPage() {
   const supabase = createClient();
+  const isSupabaseConfigured = isBrowserSupabaseConfigured();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,6 +32,12 @@ export default function UpdatePasswordPage() {
     }
 
     setIsSubmitting(true);
+
+    if (!supabase) {
+      setErrorMessage('Auth system configure করা নেই। পরে আবার চেষ্টা করুন।');
+      setIsSubmitting(false);
+      return;
+    }
 
     const { error } = await supabase.auth.updateUser({
       password,
@@ -71,6 +78,7 @@ export default function UpdatePasswordPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-2xl border border-gray-100 bg-gray-50 py-4 pl-12 pr-4 outline-none transition focus:border-brand focus:bg-white focus:ring-1 focus:ring-brand"
                 placeholder="কমপক্ষে ৮ অক্ষর"
+                disabled={!isSupabaseConfigured}
               />
             </div>
           </div>
@@ -86,9 +94,16 @@ export default function UpdatePasswordPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="w-full rounded-2xl border border-gray-100 bg-gray-50 py-4 pl-12 pr-4 outline-none transition focus:border-brand focus:bg-white focus:ring-1 focus:ring-brand"
                 placeholder="আবার পাসওয়ার্ড লিখুন"
+                disabled={!isSupabaseConfigured}
               />
             </div>
           </div>
+
+          {!isSupabaseConfigured && (
+            <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              Supabase public auth config missing. `NEXT_PUBLIC_SUPABASE_URL` এবং publishable key set করতে হবে।
+            </div>
+          )}
 
           {errorMessage && (
             <div className="flex items-start gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
@@ -107,7 +122,7 @@ export default function UpdatePasswordPage() {
             type="submit"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !isSupabaseConfigured}
             className="flex w-full items-center justify-center space-x-2 rounded-2xl bg-brand py-4 text-base font-bold text-white shadow-lg transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70 sm:text-lg"
           >
             {isSubmitting ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <ArrowRight className="h-5 w-5" />}

@@ -1,15 +1,17 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/browser';
 
 interface AuthContextValue {
-  supabase: ReturnType<typeof createClient>;
+  supabase: SupabaseClient | null;
   session: Session | null;
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isConfigured: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -26,15 +28,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const isConfigured = Boolean(supabase);
 
   useEffect(() => {
+    if (!supabase) {
+      setIsLoading(false);
+      return;
+    }
+
+    const client = supabase;
+
     let isMounted = true;
 
     async function loadSession() {
       try {
         const {
           data: { session: nextSession },
-        } = await supabase.auth.getSession();
+        } = await client.auth.getSession();
 
         if (isMounted) {
           setSession(nextSession ?? null);
@@ -54,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, nextSession: Session | null) => {
+    } = client.auth.onAuthStateChange((_event: AuthChangeEvent, nextSession: Session | null) => {
       if (!isMounted) {
         return;
       }
@@ -76,8 +86,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: session?.user ?? null,
       isAuthenticated: Boolean(session?.user),
       isLoading,
+      isConfigured,
     }),
-    [isLoading, session, supabase],
+    [isConfigured, isLoading, session, supabase],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

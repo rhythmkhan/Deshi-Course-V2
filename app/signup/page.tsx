@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { AlertCircle, ArrowRight, Gift, LoaderCircle, Lock, Mail, User } from 'lucide-react';
 import { motion } from 'motion/react';
 import BrandLogo from '@/components/BrandLogo';
-import { createClient } from '@/lib/supabase/browser';
+import { createClient, isBrowserSupabaseConfigured } from '@/lib/supabase/browser';
 
 export default function SignUpPage() {
   const supabase = createClient();
+  const isSupabaseConfigured = isBrowserSupabaseConfigured();
   const [redirectTarget, setRedirectTarget] = useState('/dashboard');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -37,6 +38,12 @@ export default function SignUpPage() {
     setIsSubmitting(true);
     setErrorMessage('');
     setMessage('');
+
+    if (!supabase) {
+      setErrorMessage('Auth system configure করা নেই। পরে আবার চেষ্টা করুন।');
+      setIsSubmitting(false);
+      return;
+    }
 
     const callbackSearch = new URLSearchParams({
       next: redirectTarget,
@@ -74,6 +81,12 @@ export default function SignUpPage() {
     setIsSubmitting(true);
     setErrorMessage('');
     setMessage('');
+
+    if (!supabase) {
+      setErrorMessage('Auth system configure করা নেই। পরে আবার চেষ্টা করুন।');
+      setIsSubmitting(false);
+      return;
+    }
 
     const callbackSearch = new URLSearchParams({
       next: redirectTarget,
@@ -123,6 +136,7 @@ export default function SignUpPage() {
                 onChange={(e) => setFullName(e.target.value)}
                 className="w-full rounded-2xl border border-gray-100 bg-gray-50 py-4 pl-12 pr-4 outline-none transition focus:border-brand focus:bg-white focus:ring-1 focus:ring-brand"
                 placeholder="আপনার নাম লিখুন"
+                disabled={!isSupabaseConfigured}
               />
             </div>
           </div>
@@ -138,6 +152,7 @@ export default function SignUpPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-2xl border border-gray-100 bg-gray-50 py-4 pl-12 pr-4 outline-none transition focus:border-brand focus:bg-white focus:ring-1 focus:ring-brand"
                 placeholder="আপনার ইমেইল লিখুন"
+                disabled={!isSupabaseConfigured}
               />
             </div>
           </div>
@@ -154,6 +169,7 @@ export default function SignUpPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-2xl border border-gray-100 bg-gray-50 py-4 pl-12 pr-4 outline-none transition focus:border-brand focus:bg-white focus:ring-1 focus:ring-brand"
                 placeholder="কমপক্ষে ৮ অক্ষরের পাসওয়ার্ড দিন"
+                disabled={!isSupabaseConfigured}
               />
             </div>
           </div>
@@ -171,10 +187,17 @@ export default function SignUpPage() {
                 onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
                 className="w-full rounded-2xl border border-gray-100 bg-gray-50 py-4 pl-12 pr-4 uppercase outline-none transition focus:border-brand focus:bg-white focus:ring-1 focus:ring-brand"
                 placeholder="Referral code থাকলে লিখুন"
+                disabled={!isSupabaseConfigured}
               />
             </div>
             <p className="ml-1 text-xs text-gray-500">Valid code দিলে নতুন account-এ প্রথম course purchase-এ ১০% off unlock হবে।</p>
           </div>
+
+          {!isSupabaseConfigured && (
+            <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              Supabase public auth config missing. `NEXT_PUBLIC_SUPABASE_URL` এবং publishable key set করতে হবে।
+            </div>
+          )}
 
           {errorMessage && (
             <div className="flex items-start gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
@@ -193,7 +216,7 @@ export default function SignUpPage() {
             type="submit"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !isSupabaseConfigured}
             className="mt-4 flex w-full items-center justify-center space-x-2 rounded-2xl bg-brand py-4 text-base font-bold text-white shadow-lg transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70 sm:text-lg"
           >
             {isSubmitting ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
@@ -213,7 +236,7 @@ export default function SignUpPage() {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleGoogleSignUp}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !isSupabaseConfigured}
             className="flex w-full items-center justify-center space-x-3 rounded-2xl border border-gray-200 bg-white py-4 font-bold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-70"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">

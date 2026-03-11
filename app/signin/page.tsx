@@ -6,11 +6,12 @@ import { useRouter } from 'next/navigation';
 import { AlertCircle, ArrowRight, LoaderCircle, Lock, Mail } from 'lucide-react';
 import { motion } from 'motion/react';
 import BrandLogo from '@/components/BrandLogo';
-import { createClient } from '@/lib/supabase/browser';
+import { createClient, isBrowserSupabaseConfigured } from '@/lib/supabase/browser';
 
 export default function SignInPage() {
   const router = useRouter();
   const supabase = createClient();
+  const isSupabaseConfigured = isBrowserSupabaseConfigured();
   const [redirectTarget, setRedirectTarget] = useState('/dashboard');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -45,6 +46,12 @@ export default function SignInPage() {
     setErrorMessage('');
     setMessage('');
 
+    if (!supabase) {
+      setErrorMessage('Auth system configure করা নেই। পরে আবার চেষ্টা করুন।');
+      setIsSubmitting(false);
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -64,6 +71,12 @@ export default function SignInPage() {
     setIsSubmitting(true);
     setErrorMessage('');
     setMessage('');
+
+    if (!supabase) {
+      setErrorMessage('Auth system configure করা নেই। পরে আবার চেষ্টা করুন।');
+      setIsSubmitting(false);
+      return;
+    }
 
     const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTarget)}`;
 
@@ -105,6 +118,7 @@ export default function SignInPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-2xl border border-gray-100 bg-gray-50 py-4 pl-12 pr-4 outline-none transition focus:border-brand focus:bg-white focus:ring-1 focus:ring-brand"
                 placeholder="আপনার ইমেইল লিখুন"
+                disabled={!isSupabaseConfigured}
               />
             </div>
           </div>
@@ -125,9 +139,16 @@ export default function SignInPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-2xl border border-gray-100 bg-gray-50 py-4 pl-12 pr-4 outline-none transition focus:border-brand focus:bg-white focus:ring-1 focus:ring-brand"
                 placeholder="আপনার পাসওয়ার্ড লিখুন"
+                disabled={!isSupabaseConfigured}
               />
             </div>
           </div>
+
+          {!isSupabaseConfigured && (
+            <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              Supabase public auth config missing. `NEXT_PUBLIC_SUPABASE_URL` এবং publishable key set করতে হবে।
+            </div>
+          )}
 
           {errorMessage && (
             <div className="flex items-start gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
@@ -146,7 +167,7 @@ export default function SignInPage() {
             type="submit"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !isSupabaseConfigured}
             className="flex w-full items-center justify-center space-x-2 rounded-2xl bg-brand py-4 text-base font-bold text-white shadow-lg transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70 sm:text-lg"
           >
             {isSubmitting ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
@@ -166,7 +187,7 @@ export default function SignInPage() {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleGoogleSignIn}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !isSupabaseConfigured}
             className="flex w-full items-center justify-center space-x-3 rounded-2xl border border-gray-200 bg-white py-4 font-bold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-70"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">

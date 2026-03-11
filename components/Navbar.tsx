@@ -29,13 +29,20 @@ export default function Navbar() {
     }
 
     const supabase = createClient();
+
+    if (!supabase) {
+      setLocalIsAuthenticated(false);
+      return;
+    }
+
+    const client = supabase;
     let isMounted = true;
 
     async function syncSession() {
       try {
         const {
           data: { session },
-        } = await supabase.auth.getSession();
+        } = await client.auth.getSession();
 
         if (isMounted) {
           setLocalIsAuthenticated(Boolean(session?.user));
@@ -51,7 +58,7 @@ export default function Navbar() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(
+    } = client.auth.onAuthStateChange(
       (_event: AuthChangeEvent, session: Session | null) => {
       if (!isMounted) {
         return;

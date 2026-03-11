@@ -253,7 +253,7 @@ interface ProfileState {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { supabase, user, isLoading: isAuthLoading } = useAuth();
+  const { supabase, user, isConfigured, isLoading: isAuthLoading } = useAuth();
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'owned', 'refer', 'shop', 'bundle', 'support'
@@ -276,6 +276,10 @@ export default function DashboardPage() {
   const [isMobileProfileMenuOpen, setIsMobileProfileMenuOpen] = useState(false);
 
   async function loadReferralState(userId: string, fallbackCode: string) {
+    if (!supabase) {
+      throw new Error('Supabase browser client is not configured.');
+    }
+
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('wallet_balance, referral_code, referred_by, pending_referral_code, welcome_discount_uses_remaining')
@@ -336,6 +340,11 @@ export default function DashboardPage() {
   }
 
   async function applyReferralCode(code: string, userId: string, isAutoApply = false) {
+    if (!supabase) {
+      setReferralError('Supabase auth config missing.');
+      return;
+    }
+
     const normalizedCode = code.trim().toUpperCase();
 
     if (!normalizedCode) {
@@ -465,6 +474,11 @@ export default function DashboardPage() {
         return;
       }
 
+      if (!supabase) {
+        setReferralError('Supabase public auth config missing. Dashboard unavailable.');
+        return;
+      }
+
       const displayName =
         (typeof user.user_metadata?.full_name === 'string' && user.user_metadata.full_name) ||
         (typeof user.user_metadata?.name === 'string' && user.user_metadata.name) ||
@@ -513,6 +527,11 @@ export default function DashboardPage() {
   }, [isAuthLoading, router, supabase, user]);
 
   async function handleSignOut() {
+    if (!supabase) {
+      router.push('/signin');
+      return;
+    }
+
     await supabase.auth.signOut();
     router.push('/signin');
     router.refresh();
@@ -537,6 +556,12 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-dvh bg-gray-50 flex flex-col overflow-x-hidden lg:h-screen lg:flex-row lg:overflow-hidden">
+      {!isConfigured && (
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Supabase public auth config missing. Dashboard and auth actions work করবে না যতক্ষণ না
+          `NEXT_PUBLIC_SUPABASE_URL` এবং publishable key set করা হচ্ছে।
+        </div>
+      )}
       {/* Mobile Header */}
       <header className="lg:hidden bg-white border-b border-gray-100 px-4 py-4 sm:px-6 flex items-center justify-between flex-shrink-0">
         <BrandLogo size="sm" textClassName="text-lg" />

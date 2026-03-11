@@ -48,7 +48,7 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
         return;
       }
 
-      if (!user) {
+      if (!user || !supabase) {
         if (isMounted) {
           setPricingState({
             walletBalance: 0,

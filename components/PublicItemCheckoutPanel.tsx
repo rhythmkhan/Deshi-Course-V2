@@ -58,7 +58,7 @@ export default function PublicItemCheckoutPanel({
         return;
       }
 
-      if (!user) {
+      if (!user || !supabase) {
         if (isMounted) {
           setPricingState({
             walletBalance: 0,
