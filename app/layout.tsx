@@ -1,4 +1,5 @@
 import type {Metadata} from 'next';
+import GoogleTagManager from '@/components/GoogleTagManager';
 import MetaPixel from '@/components/MetaPixel';
 import StructuredData from '@/components/StructuredData';
 import { Hind_Siliguri } from 'next/font/google';
@@ -53,6 +54,7 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
     <html lang="bn" className={hindSiliguri.variable}>
       <body suppressHydrationWarning className="font-bengali antialiased">
+        <GoogleTagManager />
         <StructuredData data={buildOrganizationSchema()} />
         <StructuredData data={buildWebsiteSchema()} />
         <MetaPixel />
