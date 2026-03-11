@@ -23,12 +23,12 @@ export default function FeaturedCourses({
   const visibleCourses = maxLimit > 0 ? courses.slice(0, maxLimit) : courses;
 
   return (
-    <section className="py-16 sm:py-20 lg:py-24">
+    <section className="deferred-section py-16 sm:py-20 lg:py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-20">
         <div className="mb-10 flex flex-col gap-5 sm:mb-12 md:flex-row md:items-end md:justify-between">
           <div className="max-w-xl text-center md:text-left">
             <h2 className="mb-4 text-3xl font-bold sm:text-4xl">জনপ্রিয় <span className="text-brand">কোর্সসমূহ</span></h2>
-            <p className="text-sm text-gray-500 sm:text-base">সেরা মানের কোর্সগুলো থেকে আপনার পছন্দেরটি বেছে নিন।</p>
+            <p className="text-sm text-gray-600 sm:text-base">সেরা মানের কোর্সগুলো থেকে আপনার পছন্দেরটি বেছে নিন।</p>
           </div>
           <Link
             href="/courses"
@@ -69,11 +69,11 @@ export default function FeaturedCourses({
                 )}
               </div>
               <div className="flex grow flex-col p-3 sm:p-6">
-                <h4 className="mb-2 line-clamp-2 text-sm font-bold leading-snug sm:mb-3 sm:text-xl">{course.title}</h4>
-                <div className="mb-3 text-[11px] text-gray-500 sm:mb-4 sm:text-sm">
+                <h3 className="mb-2 line-clamp-2 text-sm font-bold leading-snug text-gray-900 sm:mb-3 sm:text-xl">{course.title}</h3>
+                <div className="mb-3 text-[11px] text-gray-600 sm:mb-4 sm:text-sm">
                   <span className="line-clamp-1">{course.instructor}</span>
                 </div>
-                <ul className="mb-4 space-y-1.5 text-[11px] leading-4 text-gray-600 sm:mb-6 sm:space-y-2 sm:text-sm sm:leading-5">
+                <ul className="mb-4 space-y-1.5 text-[11px] leading-4 text-gray-700 sm:mb-6 sm:space-y-2 sm:text-sm sm:leading-5">
                   {course.featureMetrics.map((feature, fIndex) => (
                     <li key={fIndex} className="flex items-start">
                       <Check className="mr-2 mt-0.5 h-4 w-4 shrink-0 text-brand" />

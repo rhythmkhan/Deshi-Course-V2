@@ -35,9 +35,9 @@ export default function MentorsPage() {
                     referrerPolicy="no-referrer"
                   />
                 </div>
-                <h4 className="text-xl font-bold mb-1">{mentor.name}</h4>
+                <p className="mb-1 text-xl font-bold text-gray-900">{mentor.name}</p>
                 <p className="text-brand font-medium mb-2">{mentor.role}</p>
-                <p className="text-gray-500 text-sm">{mentor.company}</p>
+                <p className="text-sm text-gray-700">{mentor.company}</p>
               </div>
             ))}
           </div>

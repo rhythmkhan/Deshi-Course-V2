@@ -53,8 +53,8 @@ export default function ContactPage() {
                   <Mail className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-xl font-bold mb-2">ইমেইল করুন</h4>
-                  <Link href="mailto:info@deshicourse.xyz" className="text-gray-600 hover:text-brand">
+                  <p className="mb-2 text-xl font-bold text-gray-900">ইমেইল করুন</p>
+                  <Link href="mailto:info@deshicourse.xyz" className="text-gray-700 hover:text-brand">
                     info@deshicourse.xyz
                   </Link>
                 </div>
@@ -65,8 +65,8 @@ export default function ContactPage() {
                   <Phone className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-xl font-bold mb-2">WhatsApp</h4>
-                  <Link href="https://wa.me/8801813896400" target="_blank" rel="noreferrer" className="text-gray-600 hover:text-brand">
+                  <p className="mb-2 text-xl font-bold text-gray-900">WhatsApp</p>
+                  <Link href="https://wa.me/8801813896400" target="_blank" rel="noreferrer" className="text-gray-700 hover:text-brand">
                     +880 1813-896400
                   </Link>
                 </div>
@@ -77,8 +77,8 @@ export default function ContactPage() {
                   <Facebook className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-xl font-bold mb-2">Facebook</h4>
-                  <Link href="https://www.facebook.com/DeshiCourse" target="_blank" rel="noreferrer" className="text-gray-600 hover:text-brand">
+                  <p className="mb-2 text-xl font-bold text-gray-900">Facebook</p>
+                  <Link href="https://www.facebook.com/DeshiCourse" target="_blank" rel="noreferrer" className="text-gray-700 hover:text-brand">
                     @DeshiCourse
                   </Link>
                 </div>
@@ -89,8 +89,8 @@ export default function ContactPage() {
                   <MessageCircle className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-xl font-bold mb-2">Messenger</h4>
-                  <Link href="https://www.messenger.com/t/956128257564286" target="_blank" rel="noreferrer" className="text-gray-600 hover:text-brand">
+                  <p className="mb-2 text-xl font-bold text-gray-900">Messenger</p>
+                  <Link href="https://www.messenger.com/t/956128257564286" target="_blank" rel="noreferrer" className="text-gray-700 hover:text-brand">
                     সরাসরি মেসেজ করুন
                   </Link>
                 </div>

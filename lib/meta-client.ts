@@ -5,6 +5,7 @@ import { META_STANDARD_EVENTS, type MetaCustomData, type MetaEventName, isLocalT
 declare global {
   interface Window {
     fbq?: (...args: unknown[]) => void;
+    __pendingMetaEvents?: [string, string, MetaCustomData, { eventID: string }][];
   }
 }
 
@@ -42,9 +43,20 @@ export function trackMetaEvent({
     return eventId;
   }
 
-  if (sendBrowser && META_PIXEL_ID && typeof window !== 'undefined' && typeof window.fbq === 'function') {
+  if (sendBrowser && META_PIXEL_ID && typeof window !== 'undefined') {
     const command = META_STANDARD_EVENTS.has(eventName) ? 'track' : 'trackCustom';
-    window.fbq(command, eventName, customData ?? {}, { eventID: eventId });
+    const eventArgs: [string, string, MetaCustomData, { eventID: string }] = [
+      command,
+      eventName,
+      customData ?? {},
+      { eventID: eventId },
+    ];
+
+    if (typeof window.fbq === 'function') {
+      window.fbq(...eventArgs);
+    } else {
+      window.__pendingMetaEvents = [...(window.__pendingMetaEvents ?? []), eventArgs];
+    }
   }
 
   if (sendServer && typeof window !== 'undefined') {

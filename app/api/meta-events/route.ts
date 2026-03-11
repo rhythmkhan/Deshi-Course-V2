@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { isMetaEventName, type MetaCustomData } from '@/lib/meta';
 import { isMetaConfigured, sendMetaConversionEvent } from '@/lib/meta-server';
 import { getClientIpFromHeaders, rateLimitByKey } from '@/lib/rate-limit';
+import { hasSupabaseAuthCookie } from '@/lib/supabase/auth-cookies';
 
 const noStoreHeaders = {
   'Cache-Control': 'private, no-store, no-cache, must-revalidate',
@@ -18,15 +19,6 @@ interface MetaEventRequestBody {
 
 function getClientIpAddress(headers: Headers) {
   return getClientIpFromHeaders(headers);
-}
-
-function hasSupabaseAuthCookie(cookieStore: Awaited<ReturnType<typeof cookies>>) {
-  return cookieStore.getAll().some(({ name }) => {
-    return (
-      name.includes('supabase-auth-token') ||
-      (name.startsWith('sb-') && name.includes('-auth-token'))
-    );
-  });
 }
 
 export async function POST(request: Request) {
@@ -64,7 +56,7 @@ export async function POST(request: Request) {
     }
 
     const cookieStore = await cookies();
-    const user = hasSupabaseAuthCookie(cookieStore)
+    const user = hasSupabaseAuthCookie(cookieStore.getAll())
       ? (
           await (await createClient()).auth.getUser()
         ).data.user

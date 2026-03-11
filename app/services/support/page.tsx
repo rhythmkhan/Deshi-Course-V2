@@ -29,8 +29,8 @@ export default function SupportPage() {
                 <div className="w-16 h-16 bg-purple-100 rounded-2xl flex items-center justify-center text-brand mb-6">
                   {s.icon}
                 </div>
-                <h4 className="text-2xl font-bold mb-4">{s.title}</h4>
-                <p className="text-gray-600 leading-relaxed">{s.desc}</p>
+                <p className="mb-4 text-2xl font-bold text-gray-900">{s.title}</p>
+                <p className="leading-relaxed text-gray-700">{s.desc}</p>
               </div>
             ))}
           </div>

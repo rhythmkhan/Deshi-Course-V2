@@ -61,24 +61,24 @@ export default function AboutPage() {
             </div>
             <div className="space-y-6">
               <h2 className="text-3xl font-bold text-gray-900">আমাদের লক্ষ্য ও উদ্দেশ্য</h2>
-              <p className="text-lg text-gray-600 leading-relaxed">
+              <p className="text-lg leading-relaxed text-gray-700">
                 দেশি কোর্স একটি অনলাইন লার্নিং প্ল্যাটফর্ম যা শিক্ষার্থীদের আধুনিক বিশ্বের চাহিদাসম্পন্ন দক্ষতা অর্জনে সহায়তা করে। আমরা বিশ্বাস করি যে মানসম্পন্ন শিক্ষা সবার জন্য সহজলভ্য হওয়া উচিত।
               </p>
-              <p className="text-lg text-gray-600 leading-relaxed">
+              <p className="text-lg leading-relaxed text-gray-700">
                 আমাদের অভিজ্ঞ মেন্টররা আপনাকে হাতে-কলমে প্রজেক্টের মাধ্যমে শেখাবেন, যাতে আপনি তাত্ত্বিক জ্ঞানের পাশাপাশি ব্যবহারিক অভিজ্ঞতাও অর্জন করতে পারেন।
               </p>
               <div className="grid grid-cols-2 gap-6 pt-6">
                 <div className="p-6 bg-purple-50 rounded-2xl">
-                  <h4 className="text-2xl font-bold text-brand mb-2">
+                  <p className="mb-2 text-2xl font-bold text-brand">
                     <AnimatedCounter value={50} suffix="কে+" />
-                  </h4>
-                  <p className="text-gray-500">সফল শিক্ষার্থী</p>
+                  </p>
+                  <p className="text-gray-700">সফল শিক্ষার্থী</p>
                 </div>
                 <div className="p-6 bg-purple-50 rounded-2xl">
-                  <h4 className="text-2xl font-bold text-brand mb-2">
+                  <p className="mb-2 text-2xl font-bold text-brand">
                     <AnimatedCounter value={100} suffix="+" />
-                  </h4>
-                  <p className="text-gray-500">বিশেষজ্ঞ মেন্টর</p>
+                  </p>
+                  <p className="text-gray-700">বিশেষজ্ঞ মেন্টর</p>
                 </div>
               </div>
             </div>

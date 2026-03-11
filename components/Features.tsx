@@ -26,10 +26,10 @@ export default function Features() {
   ];
 
   return (
-    <section className="py-16 sm:py-20 lg:py-24">
+    <section className="deferred-section py-16 sm:py-20 lg:py-24">
       <div className="max-w-7xl mx-auto mb-10 px-4 text-center sm:mb-12 sm:px-6 lg:mb-16 lg:px-20">
         <h2 className="mb-4 text-3xl font-bold sm:text-4xl">আমাদের কোর্স থেকে <span className="text-brand">কেন শিখবেন?</span></h2>
-        <p className="mx-auto max-w-2xl text-sm text-gray-500 sm:text-base">আমরা মানসম্পন্ন শিক্ষা এবং ব্যবহারিক দক্ষতার ওপর গুরুত্ব দিই যা আপনাকে বর্তমান কর্মক্ষেত্রে সফল হতে সাহায্য করবে।</p>
+        <p className="mx-auto max-w-2xl text-sm text-gray-600 sm:text-base">আমরা মানসম্পন্ন শিক্ষা এবং ব্যবহারিক দক্ষতার ওপর গুরুত্ব দিই যা আপনাকে বর্তমান কর্মক্ষেত্রে সফল হতে সাহায্য করবে।</p>
       </div>
       
       <div className="max-w-7xl mx-auto grid gap-5 px-4 sm:px-6 md:grid-cols-3 md:gap-8 lg:gap-10 lg:px-20">
@@ -42,7 +42,7 @@ export default function Features() {
               {feature.icon}
             </div>
             <h3 className="mb-3 text-xl font-bold sm:mb-4 sm:text-2xl">{feature.id}. {feature.title}</h3>
-            <p className="text-sm leading-relaxed text-gray-600 sm:text-base">{feature.description}</p>
+            <p className="text-sm leading-relaxed text-gray-700 sm:text-base">{feature.description}</p>
           </div>
         ))}
       </div>

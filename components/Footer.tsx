@@ -54,8 +54,8 @@ export default function Footer() {
       key={section.title}
       className={`rounded-3xl bg-white/80 px-5 py-5 text-left shadow-[0_14px_32px_-28px_rgba(109,40,217,0.28)] ${className}`.trim()}
     >
-      <h6 className="mb-4 text-base font-bold text-gray-900">{section.title}</h6>
-      <ul className={`space-y-2.5 text-sm text-gray-600 ${listClassName}`.trim()}>
+      <p className="mb-4 text-base font-bold text-gray-900">{section.title}</p>
+      <ul className={`space-y-2.5 text-sm text-gray-700 ${listClassName}`.trim()}>
         {section.links.map((link) => (
           <li key={link.href}>
             <Link href={link.href} className="inline-flex items-center gap-2 transition hover:text-brand">
@@ -69,11 +69,11 @@ export default function Footer() {
   );
 
   return (
-    <footer className="bg-purple-50 pt-14 pb-8 sm:pt-20 lg:pt-24 lg:pb-12">
+    <footer className="deferred-section bg-purple-50 pt-14 pb-8 sm:pt-20 lg:pt-24 lg:pb-12">
       <div className="mx-auto mb-10 max-w-7xl px-4 sm:mb-12 sm:px-6 lg:px-20 lg:mb-16">
         <div className="space-y-6 rounded-[28px] border border-white/80 bg-white/85 p-6 text-center shadow-[0_20px_55px_-34px_rgba(109,40,217,0.45)] md:hidden">
           <BrandLogo className="justify-center" />
-          <p className="text-gray-500 leading-relaxed">
+          <p className="leading-relaxed text-gray-700">
             আমরা শিখতে আগ্রহী ব্যক্তিদের জন্য সেরা প্ল্যাটফর্ম প্রদান করি যেখানে গুণমান এবং দক্ষতা প্রথম অগ্রাধিকার।
           </p>
           <div className="grid grid-cols-4 gap-2.5">
@@ -114,7 +114,7 @@ export default function Footer() {
             <div className="grid items-start gap-10 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.45fr)] xl:gap-12">
               <div className="max-w-md space-y-6">
                 <BrandLogo className="justify-start" />
-                <p className="max-w-sm text-base leading-relaxed text-gray-500">
+                <p className="max-w-sm text-base leading-relaxed text-gray-700">
                   আমরা শিখতে আগ্রহী ব্যক্তিদের জন্য সেরা প্ল্যাটফর্ম প্রদান করি যেখানে গুণমান এবং দক্ষতা প্রথম অগ্রাধিকার।
                 </p>
                 <div className="flex items-center gap-3">
@@ -155,7 +155,7 @@ export default function Footer() {
         </div>
       </div>
       
-      <div className="mx-auto max-w-7xl border-t border-purple-200 px-4 pt-6 text-center text-sm text-gray-500 sm:px-6 sm:pt-8 lg:px-20">
+      <div className="mx-auto max-w-7xl border-t border-purple-200 px-4 pt-6 text-center text-sm text-gray-600 sm:px-6 sm:pt-8 lg:px-20">
         <p>কপিরাইট © ২০২৬ দেশি কোর্স।</p>
       </div>
     </footer>

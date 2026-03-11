@@ -4,16 +4,15 @@ import { BLOG_POSTS } from '@/lib/blog-data';
 import { Calendar, ArrowRight } from 'lucide-react';
 
 export default function LatestBlog() {
-  // Take only the first 3 posts
-  const latestPosts = BLOG_POSTS.slice(0, 3);
+  const latestPosts = BLOG_POSTS.slice(0, 2);
 
   return (
-    <section className="bg-gray-50 py-16 sm:py-20 lg:py-24">
+    <section className="deferred-section bg-gray-50 py-16 sm:py-20 lg:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-20">
         <div className="mb-10 flex flex-col gap-4 text-center sm:mb-12 md:flex-row md:items-end md:justify-between md:text-left">
           <div className="max-w-2xl">
             <h2 className="mb-4 text-3xl font-bold text-gray-900 sm:text-4xl">আমাদের সর্বশেষ ব্লগ</h2>
-            <p className="text-sm text-gray-600 sm:text-base">
+            <p className="text-sm text-gray-700 sm:text-base">
               ক্যারিয়ার গাইডলাইন, স্কিল ডেভেলপমেন্ট এবং প্রযুক্তির দুনিয়ার সর্বশেষ খবরাখবর জানতে আমাদের ব্লগ পড়ুন।
             </p>
           </div>
@@ -45,7 +44,7 @@ export default function LatestBlog() {
               </Link>
               
               <div className="flex flex-grow flex-col p-5 sm:p-8">
-                <div className="flex items-center text-xs text-gray-400 mb-4">
+                <div className="mb-4 flex items-center text-xs text-gray-600">
                   <Calendar className="w-4 h-4 mr-1.5" />
                   {post.date}
                   <span className="mx-2">•</span>
@@ -58,7 +57,7 @@ export default function LatestBlog() {
                   </Link>
                 </h3>
                 
-                <p className="text-gray-500 text-sm mb-6 line-clamp-2">
+                <p className="mb-6 text-sm text-gray-700 line-clamp-2">
                   {post.excerpt}
                 </p>
                 

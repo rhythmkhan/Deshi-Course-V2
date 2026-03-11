@@ -3,7 +3,6 @@
 
 @theme {
   --font-bengali: var(--font-bengali);
-  --font-sans: var(--font-sans);
   
   --color-brand-light: #8b5cf6;
   --color-brand: #6d28d9;
@@ -22,46 +21,6 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-  }
-
-  #boot-loader {
-    position: fixed;
-    inset: 0;
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    background:
-      radial-gradient(circle at top, rgba(139, 92, 246, 0.14), transparent 42%),
-      linear-gradient(180deg, #ffffff 0%, #f5f3ff 100%);
-    opacity: 1;
-    visibility: visible;
-    transition: opacity 220ms ease, visibility 220ms ease;
-  }
-
-  #boot-loader.boot-loader--done {
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-  }
-
-  .boot-loader__mark {
-    height: 3.5rem;
-    width: 3.5rem;
-    border-radius: 9999px;
-    border: 3px solid rgba(109, 40, 217, 0.14);
-    border-top-color: #6d28d9;
-    animation: boot-spin 0.8s linear infinite;
-    box-shadow: 0 14px 40px -26px rgba(109, 40, 217, 0.9);
-  }
-
-  .boot-loader__label {
-    font-size: 0.95rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    color: #4c1d95;
   }
 
   input,
@@ -98,13 +57,12 @@
   }
 }
 
-@keyframes boot-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 @layer utilities {
+  .deferred-section {
+    content-visibility: auto;
+    contain-intrinsic-size: 960px;
+  }
+
   .bg-gradient-brand {
     background: linear-gradient(135deg, #6d28d9 0%, #4c1d95 100%);
   }

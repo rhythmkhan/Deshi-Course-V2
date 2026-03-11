@@ -5,7 +5,7 @@ import { ArrowRight } from 'lucide-react';
 function HeroActions({ className = '' }: { className?: string }) {
   return (
     <div className={`flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:flex-nowrap sm:items-center lg:justify-start lg:gap-4 ${className}`.trim()}>
-      <Link href="/signin" className="w-full rounded-xl bg-gradient-brand px-5 py-3 text-center text-sm font-semibold text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl sm:w-auto sm:px-10 sm:py-4 sm:text-lg">
+      <Link href="/signin" prefetch={false} className="w-full rounded-xl bg-gradient-brand px-5 py-3 text-center text-sm font-semibold text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl sm:w-auto sm:px-10 sm:py-4 sm:text-lg">
         <span>
           এখনই শুরু করুন
         </span>
@@ -31,7 +31,7 @@ export default function Hero() {
             <span className="text-brand">দক্ষতা অর্জন করুন।</span><br />
             সার্টিফাইড হন।
           </h1>
-          <p className="mx-auto max-w-lg text-base leading-relaxed text-gray-600 sm:text-lg lg:mx-0 lg:text-xl">
+          <p className="mx-auto max-w-lg text-base leading-relaxed text-gray-700 sm:text-lg lg:mx-0 lg:text-xl">
             আমাদের ব্যাপক সার্টিফিকেশন প্রোগ্রামের সাথে ইন-ডিমান্ড স্কিল শিখুন। ৫০,০০০+ পেশাদারদের সাথে যোগ দিন যারা আমাদের মাধ্যমে তাদের ক্যারিয়ার উন্নত করেছেন।
           </p>
           <HeroActions className="hidden lg:flex" />
@@ -46,7 +46,8 @@ export default function Hero() {
               className="object-contain"
               priority
               fetchPriority="high"
-              sizes="(max-width: 1024px) 100vw, 50vw"
+              quality={60}
+              sizes="(max-width: 640px) 92vw, (max-width: 1024px) 78vw, 42vw"
             />
           </div>
         </div>

@@ -36,7 +36,7 @@ export default function BrandLogo({
   return (
     <Link href={href} className={`inline-flex items-center gap-3 whitespace-nowrap ${className}`}>
       <div className={`relative shrink-0 ${sizing.wrapper}`}>
-        <Image src="/logo.webp" alt="দেশি কোর্স" fill className="object-contain" priority={priority} sizes="48px" />
+        <Image src="/logo.webp" alt="" fill className="object-contain" priority={priority} sizes="48px" />
       </div>
       <span className={`shrink-0 font-bold leading-none tracking-tight text-gray-900 ${sizing.text} ${textClassName}`}>
         দেশি <span className="text-brand">কোর্স</span>

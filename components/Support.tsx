@@ -34,11 +34,11 @@ export default function Support() {
   ];
 
   return (
-    <section className="bg-white py-16 sm:py-20 lg:py-24" id="support">
+    <section className="deferred-section bg-white py-16 sm:py-20 lg:py-24" id="support">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-20">
         <div className="mb-10 text-center sm:mb-12 lg:mb-16">
           <h2 className="mb-4 text-3xl font-bold sm:text-4xl">আপনার কি কোনো <span className="text-brand">সাহায্য প্রয়োজন?</span></h2>
-          <p className="mx-auto max-w-2xl text-sm text-gray-500 sm:text-base">আমাদের সাপোর্ট টিম সবসময় আপনার পাশে আছে। যেকোনো প্রশ্ন বা সমস্যার জন্য আমাদের সাথে যোগাযোগ করুন।</p>
+          <p className="mx-auto max-w-2xl text-sm text-gray-600 sm:text-base">আমাদের সাপোর্ট টিম সবসময় আপনার পাশে আছে। যেকোনো প্রশ্ন বা সমস্যার জন্য আমাদের সাথে যোগাযোগ করুন।</p>
         </div>
 
         <div className="mb-12 grid gap-5 md:grid-cols-3 md:gap-8 lg:mb-16">
@@ -51,7 +51,7 @@ export default function Support() {
                 {method.icon}
               </div>
               <h3 className="text-xl font-bold mb-2">{method.title}</h3>
-              <p className="text-gray-500 text-sm mb-4 leading-relaxed">{method.description}</p>
+              <p className="mb-4 text-sm leading-relaxed text-gray-700">{method.description}</p>
               <p className="font-bold text-gray-900 mb-6">{method.contact}</p>
               <Link
                 href={method.href}
@@ -72,7 +72,7 @@ export default function Support() {
               <HelpCircle className="w-6 h-6" />
             </div>
             <h3 className="mb-4 text-2xl font-bold sm:text-3xl">সচরাচর জিজ্ঞাসিত প্রশ্নাবলী (FAQ)</h3>
-            <p className="mb-6 text-sm text-gray-500 sm:mb-8 sm:text-base">কোর্স কেনা, পেমেন্ট বা সার্টিফিকেট সংক্রান্ত সাধারণ প্রশ্নের উত্তরগুলো আমাদের FAQ সেকশনে খুঁজে পেতে পারেন।</p>
+            <p className="mb-6 text-sm text-gray-700 sm:mb-8 sm:text-base">কোর্স কেনা, পেমেন্ট বা সার্টিফিকেট সংক্রান্ত সাধারণ প্রশ্নের উত্তরগুলো আমাদের FAQ সেকশনে খুঁজে পেতে পারেন।</p>
             <Link
               href="/signin"
               className="inline-block w-full rounded-2xl bg-brand px-8 py-4 text-center font-bold text-white shadow-lg transition hover:bg-brand-dark sm:w-auto"
@@ -81,14 +81,14 @@ export default function Support() {
             </Link>
           </div>
           <div className="grid w-full gap-3 lg:w-1/2 lg:gap-4">
-            {FAQ_ITEMS.slice(0, 4).map((item) => (
+            {FAQ_ITEMS.slice(0, 3).map((item) => (
               <details key={item.question} className="group overflow-hidden rounded-2xl border border-gray-100 bg-white transition hover:border-brand">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 text-left sm:p-5">
-                  <span className="pr-4 text-sm font-medium text-gray-700 sm:text-base">{item.question}</span>
-                  <ChevronDown className="h-4 w-4 shrink-0 text-gray-400 transition group-open:rotate-180 group-open:text-brand" />
+                  <span className="pr-4 text-sm font-medium text-gray-800 sm:text-base">{item.question}</span>
+                  <ChevronDown className="h-4 w-4 shrink-0 text-gray-500 transition group-open:rotate-180 group-open:text-brand" />
                 </summary>
                 <div className="border-t border-gray-100 px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
-                  <p className="text-sm leading-relaxed text-gray-600 sm:text-base">{item.answer}</p>
+                  <p className="text-sm leading-relaxed text-gray-700 sm:text-base">{item.answer}</p>
                 </div>
               </details>
             ))}

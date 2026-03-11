@@ -11,17 +11,75 @@ export default function MetaPixel() {
 
   return (
     <>
-      <Script id="meta-pixel-base" strategy="beforeInteractive">
+      <Script id="meta-pixel-base" strategy="afterInteractive">
         {`
-          !function(f,b,e,v,n,t,s)
-          {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-          n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-          if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-          n.queue=[];t=b.createElement(e);t.async=!0;
-          t.src=v;s=b.getElementsByTagName(e)[0];
-          s.parentNode.insertBefore(t,s)}(window, document,'script',
-          'https://connect.facebook.net/en_US/fbevents.js');
-          fbq('init', '${pixelId}');
+          (() => {
+            if (window.fbq) {
+              return;
+            }
+
+            const fbq = function() {
+              fbq.callMethod ? fbq.callMethod.apply(fbq, arguments) : fbq.queue.push(arguments);
+            };
+
+            fbq.queue = [];
+            fbq.push = fbq;
+            fbq.loaded = true;
+            fbq.version = '2.0';
+            window.fbq = fbq;
+            window._fbq = fbq;
+
+            const flushPendingEvents = () => {
+              const pendingEvents = window.__pendingMetaEvents || [];
+
+              if (!pendingEvents.length) {
+                return;
+              }
+
+              for (const eventArgs of pendingEvents) {
+                window.fbq.apply(null, eventArgs);
+              }
+
+              window.__pendingMetaEvents = [];
+            };
+
+            const loadPixelLibrary = () => {
+              if (document.getElementById('meta-pixel-sdk')) {
+                flushPendingEvents();
+                return;
+              }
+
+              const script = document.createElement('script');
+              script.id = 'meta-pixel-sdk';
+              script.async = true;
+              script.src = 'https://connect.facebook.net/en_US/fbevents.js';
+              script.addEventListener('load', flushPendingEvents, { once: true });
+              const firstScript = document.getElementsByTagName('script')[0];
+              firstScript.parentNode.insertBefore(script, firstScript);
+            };
+
+            let pixelLoaded = false;
+            const schedulePixelLoad = () => {
+              if (pixelLoaded) {
+                return;
+              }
+
+              pixelLoaded = true;
+              window.removeEventListener('pointerdown', schedulePixelLoad);
+              window.removeEventListener('keydown', schedulePixelLoad);
+              window.removeEventListener('touchstart', schedulePixelLoad);
+              window.removeEventListener('scroll', schedulePixelLoad);
+              loadPixelLibrary();
+            };
+
+            fbq('init', '${pixelId}');
+            flushPendingEvents();
+            window.addEventListener('pointerdown', schedulePixelLoad, { once: true, passive: true });
+            window.addEventListener('keydown', schedulePixelLoad, { once: true });
+            window.addEventListener('touchstart', schedulePixelLoad, { once: true, passive: true });
+            window.addEventListener('scroll', schedulePixelLoad, { once: true, passive: true });
+            window.setTimeout(schedulePixelLoad, 15000);
+          })();
         `}
       </Script>
       <noscript>

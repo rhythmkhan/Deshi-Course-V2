@@ -20,14 +20,14 @@ export default function ProductShowcase({
   const visibleItems = maxLimit > 0 ? items.slice(0, maxLimit) : items;
 
   return (
-    <section className="py-16 sm:py-20 lg:py-24">
+    <section className="deferred-section py-16 sm:py-20 lg:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-20">
         <div className="mb-10 flex flex-col gap-5 sm:mb-12 md:flex-row md:items-end md:justify-between">
           <div className="max-w-xl text-center md:text-left">
             <h2 className="mb-4 text-3xl font-bold sm:text-4xl">
               জনপ্রিয় <span className="text-brand">প্রোডাক্টসমূহ</span>
             </h2>
-            <p className="text-sm text-gray-500 sm:text-base">
+            <p className="text-sm text-gray-600 sm:text-base">
               Ready-made resource, template, pack আর digital product collection এখানেই দেখুন।
             </p>
           </div>
@@ -71,8 +71,8 @@ export default function ProductShowcase({
               </div>
 
               <div className="flex grow flex-col p-3 sm:p-6">
-                <h4 className="mb-2 line-clamp-2 text-sm font-bold leading-snug sm:mb-3 sm:text-xl">{item.title}</h4>
-                <ul className="mb-4 space-y-1.5 text-[11px] leading-4 text-gray-600 sm:mb-6 sm:space-y-2 sm:text-sm sm:leading-5">
+                <h3 className="mb-2 line-clamp-2 text-sm font-bold leading-snug text-gray-900 sm:mb-3 sm:text-xl">{item.title}</h3>
+                <ul className="mb-4 space-y-1.5 text-[11px] leading-4 text-gray-700 sm:mb-6 sm:space-y-2 sm:text-sm sm:leading-5">
                   {item.featureMetrics.map((feature) => (
                     <li key={feature} className="flex items-start">
                       <Check className="mr-2 mt-0.5 h-4 w-4 shrink-0 text-brand" />
@@ -82,7 +82,7 @@ export default function ProductShowcase({
                 </ul>
                 <div className="mt-auto flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-[10px] text-gray-400 sm:text-xs">{item.format}</p>
+                    <p className="text-[10px] text-gray-600 sm:text-xs">{item.format}</p>
                     <p className="text-lg font-bold text-gray-900 sm:text-2xl">৳{item.price}</p>
                   </div>
                   <Link

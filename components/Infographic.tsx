@@ -20,14 +20,14 @@ export default function Infographic({
   const visibleBundles = maxLimit > 0 ? bundles.slice(0, maxLimit) : bundles;
 
   return (
-    <section className="py-16 sm:py-20 lg:py-24">
+    <section className="deferred-section py-16 sm:py-20 lg:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-20">
         <div className="mb-10 flex flex-col gap-5 sm:mb-12 md:flex-row md:items-end md:justify-between">
           <div className="max-w-xl text-center md:text-left">
             <h2 className="mb-4 text-3xl font-bold sm:text-4xl">
               জনপ্রিয় <span className="text-brand">বান্ডেলসমূহ</span>
             </h2>
-            <p className="text-sm text-gray-500 sm:text-base">
+            <p className="text-sm text-gray-600 sm:text-base">
               সেরা bundle collection থেকে আপনার প্রয়োজন অনুযায়ী combo skill-set বেছে নিন।
             </p>
           </div>
@@ -70,8 +70,8 @@ export default function Infographic({
               </div>
 
               <div className="flex grow flex-col p-3 sm:p-6">
-                <h4 className="mb-2 line-clamp-2 text-sm font-bold leading-snug sm:mb-3 sm:text-xl">{bundle.title}</h4>
-                <ul className="mb-4 space-y-1.5 text-[11px] leading-4 text-gray-600 sm:mb-6 sm:space-y-2 sm:text-sm sm:leading-5">
+                <h3 className="mb-2 line-clamp-2 text-sm font-bold leading-snug text-gray-900 sm:mb-3 sm:text-xl">{bundle.title}</h3>
+                <ul className="mb-4 space-y-1.5 text-[11px] leading-4 text-gray-700 sm:mb-6 sm:space-y-2 sm:text-sm sm:leading-5">
                   {bundle.featureMetrics.map((feature) => (
                     <li key={feature} className="flex items-start">
                       <Check className="mr-2 mt-0.5 h-4 w-4 shrink-0 text-brand" />
@@ -82,7 +82,7 @@ export default function Infographic({
                 <div className="mt-auto flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     {bundle.originalPrice > bundle.bundlePrice && (
-                      <p className="text-[10px] text-gray-400 line-through sm:text-xs">৳{bundle.originalPrice}</p>
+                      <p className="text-[10px] text-gray-500 line-through sm:text-xs">৳{bundle.originalPrice}</p>
                     )}
                     <p className="text-lg font-bold text-gray-900 sm:text-2xl">৳{bundle.bundlePrice}</p>
                   </div>

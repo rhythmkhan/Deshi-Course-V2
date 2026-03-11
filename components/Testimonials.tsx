@@ -19,12 +19,12 @@ export default function Testimonials() {
   ];
 
   return (
-    <section className="py-24">
+    <section className="deferred-section py-24">
       <div className="max-w-7xl mx-auto px-6 lg:px-20">
         <div className="flex flex-col md:flex-row justify-between items-end mb-16">
           <div>
             <h2 className="text-4xl font-bold mb-4">শিক্ষার্থীরা <span className="text-brand">যা বলছে</span></h2>
-            <p className="text-gray-500">আমাদের কোর্স নিয়ে শিক্ষার্থীদের অনুপ্রেরণামূলক মন্তব্যসমূহ।</p>
+            <p className="text-gray-600">আমাদের কোর্স নিয়ে শিক্ষার্থীদের অনুপ্রেরণামূলক মন্তব্যসমূহ।</p>
           </div>
           <Link
             href="https://facebook.com/DeshiCourse/reviews"
@@ -59,8 +59,8 @@ export default function Testimonials() {
                     />
                   </div>
                   <div>
-                    <h5 className="font-bold">{t.name}</h5>
-                    <p className="text-sm text-gray-500">{t.role}</p>
+                    <p className="font-bold text-gray-900">{t.name}</p>
+                    <p className="text-sm text-gray-600">{t.role}</p>
                   </div>
                 </div>
                 <div className="flex text-yellow-400">★★★★★</div>

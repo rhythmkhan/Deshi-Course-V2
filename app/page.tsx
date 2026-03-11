@@ -76,9 +76,9 @@ export default function Home() {
       <Stats />
       <Features />
       <Categories />
-      <FeaturedCourses mobileLimit={4} desktopLimit={3} />
-      <Infographic mobileLimit={4} desktopLimit={3} />
-      <ProductShowcase mobileLimit={4} desktopLimit={3} />
+      <FeaturedCourses mobileLimit={3} desktopLimit={2} />
+      <Infographic mobileLimit={3} desktopLimit={2} />
+      <ProductShowcase mobileLimit={3} desktopLimit={2} />
       <Testimonials />
       <Support />
       <LatestBlog />
