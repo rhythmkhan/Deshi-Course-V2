@@ -1,4 +1,5 @@
 import type {Metadata} from 'next';
+import AuthCodeRedirect from '@/components/AuthCodeRedirect';
 import GoogleTagManager from '@/components/GoogleTagManager';
 import MetaPixel from '@/components/MetaPixel';
 import StructuredData from '@/components/StructuredData';
@@ -54,6 +55,7 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
     <html lang="bn" className={hindSiliguri.variable}>
       <body suppressHydrationWarning className="font-bengali antialiased">
+        <AuthCodeRedirect />
         <GoogleTagManager />
         <StructuredData data={buildOrganizationSchema()} />
         <StructuredData data={buildWebsiteSchema()} />
