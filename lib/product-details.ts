@@ -71,6 +71,155 @@ function buildGenericProductDetail(product: ShopItem): ProductDetailContent {
 }
 
 const SPECIFIC_PRODUCT_DETAILS: Record<string, ProductDetailContent> = {
+  lovable: {
+    overview:
+      'Lovable Pro 1000 Credit বাংলাদেশ pack এমন buyer-দের জন্য, যারা বড় build, বেশি prompt run আর long মেয়াদের usage চান। WhatsApp delivery, Pro feature access আর stacked credit usage মিলিয়ে এটা heavy-use pack হিসেবে সাজানো হয়েছে।',
+    deliverables: [
+      '১০০০ original credit package',
+      '৯ মাস মেয়াদ',
+      'Pro-এর সব feature use করার সুযোগ',
+      'একটি email-এ unlimited plan activate করা যাবে',
+      'প্রতিদিন ৫ credit যোগ হবে',
+      '৯ মাস পর free-তে আরও ৫০০ credit পাওয়া যাবে',
+      'WhatsApp delivery support',
+    ],
+    useCases: [
+      'Lovable-এ landing page, tool বা app build বেশি volume-এ করতে',
+      'long-term builder workflow চালাতে',
+      'credit জমিয়ে larger prompt cycle run করতে',
+      'low-rate large package নিতে',
+    ],
+    audience: [
+      'Lovable heavy user বা agency builder',
+      'যারা long মেয়াদের credit package চান',
+      'যারা Pro feature use করে নিয়মিত build করেন',
+    ],
+    workflow: [
+      'Purchase করার পর WhatsApp-এ delivery process follow করুন',
+      'নিজের email দিয়ে plan activate করুন',
+      'credit use করে build flow চালান, আর daily credit top-up monitor করুন',
+    ],
+    faq: [
+      {
+        question: 'এখানে কয়টি credit থাকবে?',
+        answer: 'এই package-এ ১০০০ original credit থাকবে।',
+      },
+      {
+        question: 'এটি কতদিন মেয়াদ থাকবে?',
+        answer: 'বর্তমান offer অনুযায়ী ৯ মাস মেয়াদ থাকবে।',
+      },
+      {
+        question: 'Delivery কীভাবে হবে?',
+        answer: 'আপনার email নিয়ে WhatsApp-এর মাধ্যমে delivery support দেওয়া হবে।',
+      },
+    ],
+    support:
+      'WhatsApp delivery support থাকবে, যাতে activation বা access নিয়ে সমস্যা হলে দ্রুত direction পাওয়া যায়।',
+    facts: [
+      { label: 'ক্রেডিট', value: '1000' },
+      { label: 'মেয়াদ', value: '৯ মাস' },
+      { label: 'ডেলিভারি', value: 'WhatsApp' },
+      { label: 'প্ল্যান', value: 'Pro' },
+    ],
+  },
+  'lovable-400-credit': {
+    overview:
+      'Lovable 400 Credit pack low-cost entry option হিসেবে রাখা হয়েছে, যাতে কম খরচে Lovable workflow শুরু করা যায়। Pro feature use, daily credit top-up আর short-to-mid term usage focus এখানে রাখা হয়েছে।',
+    deliverables: [
+      '৪০০ original credit package',
+      '৫ মাস পর্যন্ত use window',
+      'Pro-এর সব feature use করার সুযোগ',
+      'একটি email-এ unlimited plan activate করা যাবে',
+      'প্রতিদিন ৫ credit যোগ হবে',
+      '১ মাস পর free-তে আরও ৪০০ credit পাওয়া যাবে',
+    ],
+    useCases: [
+      'Lovable প্রথমবার start করতে',
+      'short budget-এ real build workflow test করতে',
+      'কম খরচে Pro feature access নিতে',
+    ],
+    audience: [
+      'beginner builder',
+      'budget-conscious Lovable user',
+      'যারা smaller credit pack দিয়ে শুরু করতে চান',
+    ],
+    workflow: [
+      'Purchase করার পর delivery instruction নিন',
+      'নিজের email-এ plan activate করুন',
+      'daily credit top-up use করে build চালিয়ে যান',
+    ],
+    faq: [
+      {
+        question: 'এখানে কয়টি credit থাকবে?',
+        answer: 'এই package-এ ৪০০ original credit থাকবে।',
+      },
+      {
+        question: 'এটি কি Pro feature use করতে দেবে?',
+        answer: 'হ্যাঁ, visible offer অনুযায়ী Pro-এর সব feature use করা যাবে।',
+      },
+      {
+        question: 'এটি কার জন্য ভালো?',
+        answer: 'যারা কম খরচে Lovable workflow শুরু করতে চান, তাদের জন্য এটি ভালো entry package।',
+      },
+    ],
+    support:
+      'Delivery এবং activation নিয়ে basic direction দেওয়া হবে, যাতে দ্রুত credit use শুরু করতে পারেন।',
+    facts: [
+      { label: 'ক্রেডিট', value: '400' },
+      { label: 'মেয়াদ', value: '৫ মাস পর্যন্ত' },
+      { label: 'ডেলিভারি', value: 'WhatsApp' },
+      { label: 'প্ল্যান', value: 'Pro access' },
+    ],
+  },
+  'lovable-pro-200-credit': {
+    overview:
+      'Lovable Pro 200 Credit হলো smallest starter offer, যেটা low-entry budget-এ Pro build workflow test করার জন্য suitable। limited মেয়াদ, daily credit add-on আর prompt-based build trial focus এখানে আছে।',
+    deliverables: [
+      '২০০ original credit package',
+      'আগামী মাসের ৩১ তারিখ পর্যন্ত মেয়াদ',
+      'Pro-এর সব feature use করার সুযোগ',
+      'একটি email-এ unlimited plan activate করা যাবে',
+      'প্রতিদিন ৫ credit যোগ হবে',
+      '১ মাস পর free-তে আরও ৫০০ credit পাওয়া যাবে',
+    ],
+    useCases: [
+      'Lovable Pro workflow test করতে',
+      'small budget-এ credit-based build শুরু করতে',
+      'prompt run ও early-stage project experiment করতে',
+    ],
+    audience: [
+      'starter buyer',
+      'যারা first-time Lovable try করতে চান',
+      'small-budget builder',
+    ],
+    workflow: [
+      'Purchase-এর পর delivery instruction follow করুন',
+      'নিজের email-এ plan activate করুন',
+      'credit use করে ছোট build বা test project run করুন',
+    ],
+    faq: [
+      {
+        question: 'এখানে কয়টি credit থাকবে?',
+        answer: 'এই package-এ ২০০ original credit থাকবে।',
+      },
+      {
+        question: 'মেয়াদ কতদিন থাকবে?',
+        answer: 'বর্তমান visible offer অনুযায়ী আগামী মাসের ৩১ তারিখ পর্যন্ত মেয়াদ থাকবে।',
+      },
+      {
+        question: 'এটি কি beginner-দের জন্য okay?',
+        answer: 'হ্যাঁ, low-entry package হওয়ায় starter user-দের জন্য suitable।',
+      },
+    ],
+    support:
+      'Activation এবং early use নিয়ে basic support direction পাওয়া যাবে।',
+    facts: [
+      { label: 'ক্রেডিট', value: '200' },
+      { label: 'মেয়াদ', value: 'Next month 31' },
+      { label: 'ডেলিভারি', value: 'WhatsApp' },
+      { label: 'প্ল্যান', value: 'Pro access' },
+    ],
+  },
   'n8n-20k-templates': {
     overview:
       'n8n workflow manually from scratch না বানিয়ে দ্রুত ready automation use করতে চাইলে এই template library সবচেয়ে useful। lead, CRM, e-commerce, marketing, ops বা reporting use-case অনুযায়ী pack-by-pack templates পাবেন এবং plug-and-play setup guide follow করে দ্রুত চালু করতে পারবেন।',
