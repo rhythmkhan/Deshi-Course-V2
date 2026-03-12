@@ -428,10 +428,10 @@ export default function PublicItemCheckoutPanel({
       <div className="mt-6 space-y-3">
         {pricingState.isOwned ? (
           <Link
-            href={item.type === 'bundle' ? '/dashboard?tab=bundle' : '/dashboard?tab=shop'}
+            href={item.type === 'bundle' ? '/dashboard?tab=bundle' : '/templates'}
             className="block w-full rounded-2xl bg-brand px-6 py-3.5 text-center font-bold text-white shadow-lg transition hover:bg-brand-dark"
           >
-            {item.type === 'bundle' ? 'বান্ডেলে যান' : 'রিসোর্সে যান'}
+            {item.type === 'bundle' ? 'বান্ডেলে যান' : 'tools কিনুন'}
           </Link>
         ) : (
           <button

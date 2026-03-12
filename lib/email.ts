@@ -39,6 +39,18 @@ interface ContactEmailInput {
   message: string;
 }
 
+interface AdminOrderLifecycleEmailInput {
+  status: 'created' | 'cancelled';
+  orderId: string;
+  buyerName?: string;
+  buyerEmail?: string;
+  buyerPhone?: string;
+  invoiceId?: string;
+  total: number;
+  items: OrderEmailItem[];
+  paymentUrl?: string;
+}
+
 let cachedTransporter: nodemailer.Transporter | null = null;
 
 function escapeHtml(value: string) {
@@ -52,6 +64,46 @@ function escapeHtml(value: string) {
 
 function formatPrice(value: number) {
   return `৳ ${value.toFixed(2)}`;
+}
+
+function renderMetaRows(
+  rows: Array<{
+    label: string;
+    value: string;
+  }>,
+) {
+  return `
+    <div style="margin-top:20px;padding:16px 18px;background:#faf5ff;border:1px solid #ede9fe;border-radius:18px;">
+      ${rows
+        .map(
+          (row, index) => `
+            <div style="padding:${index === 0 ? '0 0 10px' : '10px 0'};${index < rows.length - 1 ? 'border-bottom:1px solid #e9ddff;' : ''}">
+              <div style="font-size:12px;line-height:1.5;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#7c3aed;">${escapeHtml(row.label)}</div>
+              <div style="margin-top:4px;font-size:15px;line-height:1.7;color:#111827;font-weight:600;word-break:break-word;">${escapeHtml(row.value)}</div>
+            </div>
+          `,
+        )
+        .join('')}
+    </div>
+  `;
+}
+
+function renderOrderItems(items: OrderEmailItem[]) {
+  return `
+    <div style="margin-top:22px;">
+      ${items
+        .map(
+          (item) => `
+            <div style="margin-top:12px;padding:16px 18px;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;">
+              <div style="font-size:16px;line-height:1.6;font-weight:700;color:#111827;word-break:break-word;">${escapeHtml(item.title)}</div>
+              <div style="margin-top:10px;font-size:13px;line-height:1.6;color:#6b7280;text-transform:capitalize;">${escapeHtml(item.type)}</div>
+              <div style="margin-top:8px;font-size:16px;line-height:1.6;font-weight:800;color:#111827;">${escapeHtml(formatPrice(item.price))}</div>
+            </div>
+          `,
+        )
+        .join('')}
+    </div>
+  `;
 }
 
 function getMailConfig() {
@@ -113,28 +165,34 @@ function renderEmailShell({
   footerNote?: string;
 }) {
   return `
-    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preheader)}</div>
-    <div style="margin:0;padding:24px;background:#f6f3ff;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-      <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #ede9fe;">
-        <div style="padding:28px 32px;background:linear-gradient(135deg,#7c3aed 0%,#5b21b6 100%);color:#ffffff;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${escapeHtml(preheader)}</div>
+    <div style="margin:0;padding:0;background:#f6f3ff;font-family:Arial,Helvetica,sans-serif;color:#111827;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;background:#f6f3ff;">
+        <tr>
+          <td style="padding:16px 12px;">
+            <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #ede9fe;">
+              <div style="padding:24px 20px;background:linear-gradient(135deg,#7c3aed 0%,#5b21b6 100%);color:#ffffff;">
           <div style="font-size:14px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;opacity:0.82;">${escapeHtml(SITE_NAME)}</div>
-          <h1 style="margin:12px 0 0;font-size:30px;line-height:1.2;">${escapeHtml(title)}</h1>
-          <p style="margin:12px 0 0;font-size:15px;line-height:1.7;color:rgba(255,255,255,0.88);">${escapeHtml(intro)}</p>
-        </div>
-        <div style="padding:32px;">
+          <h1 style="margin:12px 0 0;font-size:28px;line-height:1.2;">${escapeHtml(title)}</h1>
+          <p style="margin:12px 0 0;font-size:15px;line-height:1.75;color:rgba(255,255,255,0.88);">${escapeHtml(intro)}</p>
+              </div>
+              <div style="padding:24px 20px;">
           ${body}
           ${ctaLabel && ctaUrl ? `
-            <div style="margin-top:28px;">
-              <a href="${ctaUrl}" style="display:inline-block;padding:14px 22px;border-radius:14px;background:#7c3aed;color:#ffffff;text-decoration:none;font-weight:700;">
+            <div style="margin-top:24px;">
+              <a href="${ctaUrl}" style="display:block;width:100%;max-width:280px;box-sizing:border-box;padding:15px 20px;border-radius:14px;background:#7c3aed;color:#ffffff;text-decoration:none;font-weight:700;text-align:center;">
                 ${escapeHtml(ctaLabel)}
               </a>
             </div>
           ` : ''}
-          <div style="margin-top:32px;padding-top:20px;border-top:1px solid #ede9fe;font-size:13px;line-height:1.7;color:#6b7280;">
+          <div style="margin-top:28px;padding-top:18px;border-top:1px solid #ede9fe;font-size:13px;line-height:1.8;color:#6b7280;">
             ${footerNote ? escapeHtml(footerNote) : `কোনো সমস্যা হলে ${escapeHtml(getMailConfig().from)} অথবা WhatsApp support-এ যোগাযোগ করুন।`}
           </div>
-        </div>
-      </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+      </table>
     </div>
   `;
 }
@@ -180,17 +238,6 @@ export async function sendOrderConfirmationEmails({
   const primaryActionUrl = safeDeliveryLinks[0]?.url || courseUrl || `${SITE_URL}/dashboard`;
   const primaryActionLabel =
     safeDeliveryLinks[0]?.label || (courseUrl ? 'কোর্সে যান' : 'ড্যাশবোর্ডে যান');
-  const orderLinesHtml = items
-    .map(
-      (item) => `
-        <tr>
-          <td style="padding:12px 0;border-bottom:1px solid #f3f4f6;">${escapeHtml(item.title)}</td>
-          <td style="padding:12px 0;border-bottom:1px solid #f3f4f6;text-transform:capitalize;color:#6b7280;">${escapeHtml(item.type)}</td>
-          <td style="padding:12px 0;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:700;">${escapeHtml(formatPrice(item.price))}</td>
-        </tr>
-      `,
-    )
-    .join('');
   const orderLinesText = items
     .map((item) => `- ${item.title} (${item.type}) — ${formatPrice(item.price)}`)
     .join('\n');
@@ -224,23 +271,12 @@ export async function sendOrderConfirmationEmails({
       <p style="margin:0 0 18px;font-size:15px;line-height:1.8;color:#374151;">
         ধন্যবাদ। আপনার payment আমরা successful হিসেবে record করেছি। নিচে order summary দেওয়া হলো।
       </p>
-      <div style="padding:18px 20px;background:#faf5ff;border:1px solid #ede9fe;border-radius:18px;">
-        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:14px;line-height:1.7;">
-          <div><strong>Order ID:</strong> ${escapeHtml(orderId)}</div>
-          <div><strong>Invoice ID:</strong> ${escapeHtml(invoiceId)}</div>
-          <div><strong>Total:</strong> ${escapeHtml(formatPrice(total))}</div>
-        </div>
-      </div>
-      <table style="width:100%;margin-top:24px;border-collapse:collapse;font-size:14px;line-height:1.6;color:#111827;">
-        <thead>
-          <tr>
-            <th style="padding-bottom:10px;text-align:left;color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;">Item</th>
-            <th style="padding-bottom:10px;text-align:left;color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;">Type</th>
-            <th style="padding-bottom:10px;text-align:right;color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;">Price</th>
-          </tr>
-        </thead>
-        <tbody>${orderLinesHtml}</tbody>
-      </table>
+      ${renderMetaRows([
+        { label: 'Order ID', value: orderId },
+        { label: 'Invoice ID', value: invoiceId },
+        { label: 'Total', value: formatPrice(total) },
+      ])}
+      ${renderOrderItems(items)}
       ${deliveryLinksHtml}
       <p style="margin:24px 0 0;font-size:14px;line-height:1.8;color:#6b7280;">
         Dashboard-এ ঢুকে আপনার course access, referral panel, এবং purchase history দেখতে পারবেন।
@@ -272,25 +308,14 @@ export async function sendOrderConfirmationEmails({
       <p style="margin:0 0 18px;font-size:15px;line-height:1.8;color:#374151;">
         নতুন একটি payment successful হয়েছে।
       </p>
-      <div style="padding:18px 20px;background:#faf5ff;border:1px solid #ede9fe;border-radius:18px;">
-        <div style="font-size:14px;line-height:1.8;">
-          <div><strong>Customer:</strong> ${escapeHtml(customerName)}</div>
-          <div><strong>Email:</strong> ${escapeHtml(to)}</div>
-          <div><strong>Order ID:</strong> ${escapeHtml(orderId)}</div>
-          <div><strong>Invoice ID:</strong> ${escapeHtml(invoiceId)}</div>
-          <div><strong>Total:</strong> ${escapeHtml(formatPrice(total))}</div>
-        </div>
-      </div>
-      <table style="width:100%;margin-top:24px;border-collapse:collapse;font-size:14px;line-height:1.6;color:#111827;">
-        <thead>
-          <tr>
-            <th style="padding-bottom:10px;text-align:left;color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;">Item</th>
-            <th style="padding-bottom:10px;text-align:left;color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;">Type</th>
-            <th style="padding-bottom:10px;text-align:right;color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;">Price</th>
-          </tr>
-        </thead>
-        <tbody>${orderLinesHtml}</tbody>
-      </table>
+      ${renderMetaRows([
+        { label: 'Customer', value: customerName },
+        { label: 'Email', value: to },
+        { label: 'Order ID', value: orderId },
+        { label: 'Invoice ID', value: invoiceId },
+        { label: 'Total', value: formatPrice(total) },
+      ])}
+      ${renderOrderItems(items)}
       ${deliveryLinksHtml}
     `,
     ctaLabel: 'ড্যাশবোর্ড খুলুন',
@@ -325,6 +350,94 @@ export async function sendOrderConfirmationEmails({
       replyTo: to,
     }),
   ]);
+}
+
+export async function sendAdminOrderLifecycleEmail({
+  status,
+  orderId,
+  buyerName,
+  buyerEmail,
+  buyerPhone,
+  invoiceId,
+  total,
+  items,
+  paymentUrl,
+}: AdminOrderLifecycleEmailInput) {
+  const isCreated = status === 'created';
+  const statusLabel = isCreated ? 'pending order create হয়েছে' : 'payment cancel হয়েছে';
+  const title = isCreated ? 'নতুন pending order এসেছে' : 'একটি payment cancel হয়েছে';
+  const subject = isCreated
+    ? `${SITE_NAME}: New pending order ${orderId}`
+    : `${SITE_NAME}: Payment cancelled ${orderId}`;
+  const intro = buyerEmail
+    ? `Customer email: ${buyerEmail}`
+    : `Order reference: ${orderId}`;
+  const metaRows = [
+    { label: 'Order ID', value: orderId },
+    { label: 'Status', value: statusLabel },
+    { label: 'Total', value: formatPrice(total) },
+  ];
+
+  if (buyerName) {
+    metaRows.splice(0, 0, { label: 'Customer', value: buyerName });
+  }
+
+  if (buyerEmail) {
+    metaRows.splice(buyerName ? 1 : 0, 0, { label: 'Email', value: buyerEmail });
+  }
+
+  if (buyerPhone) {
+    metaRows.push({ label: 'Phone', value: buyerPhone });
+  }
+
+  if (invoiceId) {
+    metaRows.push({ label: 'Invoice ID', value: invoiceId });
+  }
+
+  if (paymentUrl) {
+    metaRows.push({ label: 'Payment URL', value: paymentUrl });
+  }
+
+  const html = renderEmailShell({
+    preheader: `${title} - ${orderId}`,
+    title,
+    intro,
+    body: `
+      <p style="margin:0 0 18px;font-size:15px;line-height:1.8;color:#374151;">
+        ${isCreated ? 'Customer payment শুরু করেছে।' : 'Customer payment flow থেকে cancel page-এ গেছে।'}
+      </p>
+      ${renderMetaRows(metaRows)}
+      ${renderOrderItems(items)}
+    `,
+    ctaLabel: isCreated ? 'ড্যাশবোর্ড খুলুন' : undefined,
+    ctaUrl: isCreated ? `${SITE_URL}/dashboard` : undefined,
+  });
+
+  const text = [
+    title,
+    '',
+    `Order ID: ${orderId}`,
+    `Status: ${statusLabel}`,
+    buyerName ? `Customer: ${buyerName}` : null,
+    buyerEmail ? `Email: ${buyerEmail}` : null,
+    buyerPhone ? `Phone: ${buyerPhone}` : null,
+    invoiceId ? `Invoice ID: ${invoiceId}` : null,
+    `Total: ${formatPrice(total)}`,
+    paymentUrl ? `Payment URL: ${paymentUrl}` : null,
+    '',
+    'Items:',
+    ...items.map((item) => `- ${item.title} (${item.type}) — ${formatPrice(item.price)}`),
+  ]
+    .filter((line): line is string => Boolean(line))
+    .join('\n');
+
+  await sendEmail({
+    to: getMailConfig().from,
+    subject,
+    html,
+    text,
+    replyTo: buyerEmail,
+  });
 }
 
 export async function sendContactEmails({

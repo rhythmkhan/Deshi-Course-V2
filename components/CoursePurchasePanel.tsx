@@ -36,6 +36,10 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { supabase, user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const shouldShowToolsCta =
+    course.slug === 'n8n-automation-mastery' ||
+    course.slug === 'vibe-coding-mastery' ||
+    course.slug === 'phone-ai-video-editing';
   const handledCouponRef = useRef('');
   const [pricingState, setPricingState] = useState<PricingState>({
       walletBalance: 0,
@@ -415,10 +419,10 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
       <div className="mt-6 space-y-3">
         {pricingState.isOwned ? (
           <Link
-            href={`/courses/${course.slug}`}
+            href={shouldShowToolsCta ? '/templates' : `/courses/${course.slug}`}
             className="block w-full rounded-2xl bg-brand px-6 py-3.5 text-center font-bold text-white shadow-lg transition hover:bg-brand-dark"
           >
-            কোর্সে যান
+            {shouldShowToolsCta ? 'tools কিনুন' : 'কোর্সে যান'}
           </Link>
         ) : (
           <button

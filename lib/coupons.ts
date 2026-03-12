@@ -5,8 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 export type CouponScope = 'all' | 'course' | 'bundle' | 'shop';
 export type CouponDiscountType = 'percent' | 'fixed';
 export type CouponItemType = 'course' | 'bundle' | 'shop';
-export type TelegramCouponTrack = 'n8n' | 'vibe';
-export type TelegramCouponProduct = 'course' | 'bundle' | 'template';
+export type TelegramCouponCatalogType = 'course' | 'bundle' | 'product';
 
 export interface CouponPricingRule {
   code: string;
@@ -53,90 +52,18 @@ interface CouponPricedItemLike {
   effectivePrice: number;
 }
 
-interface TelegramCouponOffer {
-  track: TelegramCouponTrack;
-  product: TelegramCouponProduct;
+export interface TelegramCouponTarget {
+  catalogType: TelegramCouponCatalogType;
   itemType: CouponItemType;
   slug: string;
   title: string;
   path: string;
-  offerAmount: number;
-  source: string;
+  price: number;
 }
 
 const COUPON_PREFIX = 'DC';
 const COUPON_LENGTH = 8;
 const COUPON_TTL_MS = 24 * 60 * 60 * 1000;
-
-const TELEGRAM_COUPON_OFFERS: Record<
-  TelegramCouponTrack,
-  Record<TelegramCouponProduct, TelegramCouponOffer>
-> = {
-  n8n: {
-    course: {
-      track: 'n8n',
-      product: 'course',
-      itemType: 'course',
-      slug: 'n8n-automation-mastery',
-      title: 'n8n Automation Mastery',
-      path: '/courses/n8n-automation-mastery',
-      offerAmount: 99,
-      source: 'telegram:n8n:course',
-    },
-    bundle: {
-      track: 'n8n',
-      product: 'bundle',
-      itemType: 'bundle',
-      slug: 'n8n-course-plus-templates',
-      title: 'n8n Course + Templates',
-      path: '/bundles/n8n-course-plus-templates',
-      offerAmount: 999,
-      source: 'telegram:n8n:bundle',
-    },
-    template: {
-      track: 'n8n',
-      product: 'template',
-      itemType: 'shop',
-      slug: 'n8n-20k-templates',
-      title: 'n8n 20K+ Templates',
-      path: '/templates/n8n-20k-templates',
-      offerAmount: 899,
-      source: 'telegram:n8n:template',
-    },
-  },
-  vibe: {
-    course: {
-      track: 'vibe',
-      product: 'course',
-      itemType: 'course',
-      slug: 'vibe-coding-mastery',
-      title: 'Vibe Coding Mastery',
-      path: '/courses/vibe-coding-mastery',
-      offerAmount: 99,
-      source: 'telegram:vibe:course',
-    },
-    bundle: {
-      track: 'vibe',
-      product: 'bundle',
-      itemType: 'bundle',
-      slug: 'vibe-coding-prompt-library',
-      title: 'Vibe Coding + Prompt Library',
-      path: '/bundles/vibe-coding-prompt-library',
-      offerAmount: 499,
-      source: 'telegram:vibe:bundle',
-    },
-    template: {
-      track: 'vibe',
-      product: 'template',
-      itemType: 'shop',
-      slug: 'prompt-ui-library',
-      title: 'Prompt + UI Library',
-      path: '/templates/prompt-ui-library',
-      offerAmount: 399,
-      source: 'telegram:vibe:template',
-    },
-  },
-};
 
 function roundAmount(value: number) {
   return Number(value.toFixed(2));
@@ -228,37 +155,27 @@ export function getCouponEligibleSubtotal(
   return roundAmount(adjustedSubtotal);
 }
 
-export function getTelegramCouponOffer(
-  track: TelegramCouponTrack,
-  product: TelegramCouponProduct,
-) {
-  return TELEGRAM_COUPON_OFFERS[track]?.[product] ?? null;
-}
-
-export function buildTelegramCouponLink(code: string, track: TelegramCouponTrack, product: TelegramCouponProduct) {
-  const offer = getTelegramCouponOffer(track, product);
-
-  if (!offer) {
-    throw new Error('Coupon offer not found');
-  }
-
-  return `${SITE_URL}${offer.path}?coupon=${encodeURIComponent(code)}`;
+export function buildTelegramCouponLink(code: string, path: string) {
+  const url = new URL(path, SITE_URL);
+  url.searchParams.set('coupon', code);
+  return url.toString();
 }
 
 export async function createCoupon(params: {
   discountAmount: number;
-  track: TelegramCouponTrack;
-  product: TelegramCouponProduct;
+  target: TelegramCouponTarget;
   issuedBy?: string;
   orderId?: string;
 }) {
-  const offer = getTelegramCouponOffer(params.track, params.product);
-
-  if (!offer) {
-    throw new Error('Coupon offer target পাওয়া যায়নি।');
+  if (!params.target.slug || !params.target.title || !params.target.path) {
+    throw new Error('Coupon target পাওয়া যায়নি।');
   }
 
-  if (params.discountAmount >= offer.offerAmount) {
+  if (!Number.isFinite(params.target.price) || params.target.price <= 0) {
+    throw new Error('Target item price পাওয়া যায়নি।');
+  }
+
+  if (params.discountAmount >= params.target.price) {
     throw new Error('Discount amount offer price-এর চেয়ে কম হতে হবে।');
   }
 
@@ -270,13 +187,13 @@ export async function createCoupon(params: {
     const code = generateCouponCode();
     const { error } = await supabase.from('coupons').insert({
       code,
-      description: `${offer.title} coupon`,
+      description: `${params.target.title} coupon`,
       discount_type: 'fixed',
       discount_value: params.discountAmount,
-      applies_to: itemTypeToScope(offer.itemType),
-      target_item_type: offer.itemType,
-      target_slug: offer.slug,
-      product_source: offer.source,
+      applies_to: itemTypeToScope(params.target.itemType),
+      target_item_type: params.target.itemType,
+      target_slug: params.target.slug,
+      product_source: `telegram:${params.target.catalogType}:${params.target.slug}`,
       order_id: params.orderId ?? null,
       issued_by: params.issuedBy ?? null,
       starts_at: startsAt,
@@ -289,9 +206,9 @@ export async function createCoupon(params: {
     if (!error) {
       return {
         code,
-        offer,
+        target: params.target,
         expiresAt,
-        finalAmount: roundAmount(offer.offerAmount - params.discountAmount),
+        finalAmount: roundAmount(params.target.price - params.discountAmount),
       };
     }
   }

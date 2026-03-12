@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-import { attachOrderPaymentUrl, createPendingCartOrder, createPendingOrder } from '@/lib/payments';
+import {
+  attachOrderPaymentUrl,
+  createPendingCartOrder,
+  createPendingOrder,
+  notifyAdminPendingOrderCreated,
+} from '@/lib/payments';
 import type { CartItemInput } from '@/lib/cart';
 import { getClientIpFromHeaders, rateLimitByKey } from '@/lib/rate-limit';
 import { getRequestSiteUrl } from '@/lib/site-url';
@@ -138,6 +143,31 @@ export async function POST(request: Request) {
       await attachOrderPaymentUrl(pending.orderId, paymentUrl);
     } catch (error) {
       console.error('Order payment URL save failed', error);
+    }
+
+    try {
+      await notifyAdminPendingOrderCreated({
+        orderId: pending.orderId,
+        customerName: pending.customerName,
+        customerEmail: pending.customerEmail,
+        total: pending.pricing.finalPrice,
+        paymentUrl,
+        items: isCartCheckout
+          ? (pending as Awaited<ReturnType<typeof createPendingCartOrder>>).items.map((item) => ({
+              title: item.title,
+              type: item.type,
+              price: item.price,
+            }))
+          : [
+              {
+                title: (pending as Awaited<ReturnType<typeof createPendingOrder>>).course.title,
+                type: 'course' as const,
+                price: (pending as Awaited<ReturnType<typeof createPendingOrder>>).course.price,
+              },
+            ],
+      });
+    } catch (error) {
+      console.error('Pending order admin email failed', error);
     }
 
     return NextResponse.json(

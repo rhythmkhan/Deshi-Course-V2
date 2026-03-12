@@ -2,8 +2,21 @@ import Link from 'next/link';
 import { AlertCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { markOrderCancelled } from '@/lib/payments';
 
-export default function PaymentCancelPage() {
+interface PaymentCancelPageProps {
+  searchParams: Promise<{
+    orderId?: string;
+  }>;
+}
+
+export default async function PaymentCancelPage({ searchParams }: PaymentCancelPageProps) {
+  const params = await searchParams;
+  const orderId = params.orderId ?? '';
+  const result = orderId
+    ? await markOrderCancelled(orderId)
+    : { ok: false, message: 'Order reference পাওয়া যায়নি।' };
+
   return (
     <main className="min-h-screen bg-white">
       <Navbar />
@@ -16,6 +29,7 @@ export default function PaymentCancelPage() {
           <p className="mt-4 text-gray-600">
             চাইলে আবার Pay শুরু করতে পারেন, অথবা সাপোর্ট টিমের সাথে কথা বলতে পারেন।
           </p>
+          <p className="mt-2 text-sm text-gray-500">{result.message}</p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Link
               href="/courses"

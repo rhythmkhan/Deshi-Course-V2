@@ -6,7 +6,7 @@ import {
   type CouponPricingRule,
 } from '@/lib/coupons';
 import { getCourseCardBySlug } from '@/lib/course-details';
-import { sendOrderConfirmationEmails } from '@/lib/email';
+import { sendAdminOrderLifecycleEmail, sendOrderConfirmationEmails } from '@/lib/email';
 import { appendSuccessfulOrderRow } from '@/lib/google-sheets';
 import { buildMetaContentType } from '@/lib/meta';
 import { sendMetaConversionEvent } from '@/lib/meta-server';
@@ -76,6 +76,19 @@ interface PurchaseTrackingItem {
   slug: string;
   title: string;
   price: number;
+}
+
+interface AdminPendingOrderNotificationInput {
+  orderId: string;
+  customerName: string;
+  customerEmail: string;
+  total: number;
+  paymentUrl: string;
+  items: Array<{
+    title: string;
+    type: 'course' | 'bundle' | 'shop';
+    price: number;
+  }>;
 }
 
 function encodeCartOrderItems(items: CartCatalogItem[]) {
@@ -305,6 +318,25 @@ function buildEnrollmentCourses(order: OrderRow, orderItems: OrderItemRow[]) {
   return [getCourseCardBySlug(order.course_slug)].filter(
     (item): item is NonNullable<typeof item> => Boolean(item),
   );
+}
+
+export async function notifyAdminPendingOrderCreated({
+  orderId,
+  customerName,
+  customerEmail,
+  total,
+  paymentUrl,
+  items,
+}: AdminPendingOrderNotificationInput) {
+  await sendAdminOrderLifecycleEmail({
+    status: 'created',
+    orderId,
+    buyerName: customerName,
+    buyerEmail: customerEmail,
+    total,
+    paymentUrl,
+    items,
+  });
 }
 
 async function getAuthenticatedUserWithProfile() {
@@ -570,6 +602,95 @@ export async function attachOrderPaymentUrl(orderId: string, paymentUrl: string)
   if (error) {
     throw new Error('Payment URL save করা যায়নি।');
   }
+}
+
+export async function markOrderCancelled(orderId: string) {
+  const supabase = createAdminClient();
+  const { data: orderData } = await supabase
+    .from('orders')
+    .select(
+      'id, user_id, course_slug, payment_status, amount, final_amount, original_amount, currency, wallet_discount_amount, referral_discount_amount, provider_invoice_id, provider_val_id, provider_transaction_id, payment_url, metadata, created_at, paid_at',
+    )
+    .eq('id', orderId)
+    .single();
+
+  const order = orderData as OrderRow | null;
+
+  if (!order) {
+    return { ok: false, message: 'Order পাওয়া যায়নি।' };
+  }
+
+  if (order.payment_status === 'paid') {
+    return { ok: false, message: 'এই order-এর payment already successful।' };
+  }
+
+  const { data: storedOrderItems } = await supabase
+    .from('order_items')
+    .select('item_type, item_slug, item_title, unit_price, original_price')
+    .eq('order_id', order.id);
+
+  const orderItems = ((storedOrderItems as OrderItemRow[] | null) ?? []);
+  const purchaseTracking = buildPurchaseTrackingDetails(order, orderItems);
+  let nextMetadata = buildOrderMetadata(getOrderMetadata(order.metadata));
+  let metadataDirty = false;
+  const emailFlags = nextMetadata.emailFlags as Record<string, unknown>;
+
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('full_name, email, phone')
+    .eq('id', order.user_id)
+    .single();
+
+  const profile = (profileData as ProfileRow | null) ?? null;
+
+  if (emailFlags.cancelledAdmin !== true) {
+    try {
+      await sendAdminOrderLifecycleEmail({
+        status: 'cancelled',
+        orderId: order.id,
+        buyerName:
+          typeof profile?.full_name === 'string' ? profile.full_name : undefined,
+        buyerEmail: typeof profile?.email === 'string' ? profile.email : undefined,
+        buyerPhone: typeof profile?.phone === 'string' ? profile.phone : undefined,
+        invoiceId: order.provider_invoice_id || undefined,
+        total: Number(purchaseTracking.purchaseCustomData.value ?? 0),
+        paymentUrl: order.payment_url || undefined,
+        items: purchaseTracking.trackedItems.map((item) => ({
+          title: item.title,
+          type: item.itemType,
+          price: item.price,
+        })),
+      });
+
+      nextMetadata = {
+        ...nextMetadata,
+        emailFlags: {
+          ...emailFlags,
+          cancelledAdmin: true,
+        },
+        cancelledEmailSentAt: Date.now(),
+      };
+      metadataDirty = true;
+    } catch (error) {
+      console.error('Order cancel email failed', error);
+    }
+  }
+
+  const updatePayload: Record<string, unknown> = {};
+
+  if (order.payment_status !== 'failed') {
+    updatePayload.payment_status = 'failed';
+  }
+
+  if (metadataDirty) {
+    updatePayload.metadata = nextMetadata;
+  }
+
+  if (Object.keys(updatePayload).length > 0) {
+    await supabase.from('orders').update(updatePayload).eq('id', order.id);
+  }
+
+  return { ok: true, message: 'Payment cancel status record হয়েছে।' };
 }
 
 export async function finalizeZiniPayOrder(orderId: string, invoiceId: string) {
