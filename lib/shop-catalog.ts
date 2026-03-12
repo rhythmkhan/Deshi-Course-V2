@@ -14,6 +14,19 @@ export interface ShopItem {
   tag?: string;
 }
 
+const PRODUCT_IMAGE_BY_SLUG: Record<string, string> = {
+  'n8n-20k-templates': '/images/products/n8n-20k-templates.webp',
+  'prompt-ui-library': '/images/products/prompt-ui-library.webp',
+  lovable: '/images/products/lovable.webp',
+  '1m-plus-tshirt-design-package': '/images/products/1m-plus-tshirt-design-package.webp',
+  'monkey-vlog-viral-video': '/images/products/monkey-vlog-viral-video.webp',
+  '600-plus-wordpress-premium-website-templates': '/images/products/600-plus-wordpress-premium-website-templates.webp',
+  'wordpress-premium-themes-and-plugins-3000-plus': '/images/products/wordpress-premium-themes-and-plugins-3000-plus.webp',
+  'bm-verify-certificate': '/images/products/bm-verify-certificate.webp',
+  'ai-horror-reels-bundle-drive': '/images/products/ai-horror-reels-bundle-drive.webp',
+  '1000-plus-anime-reels-bundle-drive': '/images/products/1000-plus-anime-reels-bundle-drive.webp',
+};
+
 function createProduct(
   id: number,
   title: string,
@@ -27,7 +40,7 @@ function createProduct(
     slug,
     title,
     type,
-    image: buildCatalogArt(title, theme, 'Product'),
+    image: PRODUCT_IMAGE_BY_SLUG[slug] ?? buildCatalogArt(title, theme, 'Product'),
     price: 99,
     description,
     format: 'Instant digital access',
@@ -48,7 +61,7 @@ export const SHOP_CATALOG: ShopItem[] = [
     slug: 'n8n-20k-templates',
     title: 'n8n 20K+ Templates',
     type: 'টেমপ্লেট লাইব্রেরি',
-    image: '/images/offers/n8n-templates.svg',
+    image: PRODUCT_IMAGE_BY_SLUG['n8n-20k-templates'],
     price: 899,
     description: '20,000+ ready-made n8n templates, pack-by-pack use-case coverage এবং plug-and-play setup guide।',
     format: 'Instant digital access',
@@ -67,7 +80,7 @@ export const SHOP_CATALOG: ShopItem[] = [
     slug: 'prompt-ui-library',
     title: 'Prompt + UI Library',
     type: 'Prompt library',
-    image: '/images/offers/prompt-ui-library.svg',
+    image: PRODUCT_IMAGE_BY_SLUG['prompt-ui-library'],
     price: 399,
     description: '5,000+ prompt + UI blocks, landing/tool/dashboard pack আর copy-paste setup guide।',
     format: 'Instant digital access',

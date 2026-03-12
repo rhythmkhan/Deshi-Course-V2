@@ -21,19 +21,11 @@ export default function Testimonials() {
   return (
     <section className="deferred-section py-24">
       <div className="max-w-7xl mx-auto px-6 lg:px-20">
-        <div className="flex flex-col md:flex-row justify-between items-end mb-16">
+        <div className="mb-16">
           <div>
             <h2 className="text-4xl font-bold mb-4">শিক্ষার্থীরা <span className="text-brand">যা বলছে</span></h2>
             <p className="text-gray-600">আমাদের কোর্স নিয়ে শিক্ষার্থীদের অনুপ্রেরণামূলক মন্তব্যসমূহ।</p>
           </div>
-          <Link
-            href="https://facebook.com/DeshiCourse/reviews"
-            target="_blank"
-            rel="noreferrer"
-            className="mt-6 md:mt-0 bg-brand text-white px-8 py-3 rounded-xl font-bold"
-          >
-            সব দেখুন
-          </Link>
         </div>
         
         <div className="grid md:grid-cols-2 gap-10">
@@ -42,7 +34,7 @@ export default function Testimonials() {
               key={index}
               className="bg-gray-50 p-10 rounded-3xl relative transition hover:-translate-y-1 hover:shadow-xl"
             >
-              <div className="absolute -top-6 left-10 w-12 h-12 bg-brand rounded-full flex items-center justify-center text-white shadow-lg">
+              <div className="absolute -top-6 right-10 flex h-12 w-12 items-center justify-center rounded-full bg-brand text-white shadow-lg">
                 <Quote className="w-6 h-6" />
               </div>
               <p className="text-lg text-gray-700 italic mb-8">{t.quote}</p>
@@ -67,6 +59,17 @@ export default function Testimonials() {
               </div>
             </div>
           ))}
+        </div>
+
+        <div className="mt-8 flex justify-end">
+          <Link
+            href="https://facebook.com/DeshiCourse/reviews"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center rounded-xl bg-brand px-8 py-3 font-bold text-white"
+          >
+            সব দেখুন
+          </Link>
         </div>
       </div>
     </section>

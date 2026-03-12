@@ -10,6 +10,11 @@ export interface CourseFact {
   value: string;
 }
 
+export interface CourseModule {
+  title: string;
+  lessons: string[];
+}
+
 export interface CourseDetail extends CourseSummary {
   language: string;
   heroSummary: string;
@@ -23,6 +28,7 @@ export interface CourseDetail extends CourseSummary {
   certificate: string;
   facts: CourseFact[];
   faq: CourseFaq[];
+  modules?: CourseModule[];
 }
 
 type CourseDetailOverrides = Partial<Omit<CourseDetail, keyof CourseSummary>>;
@@ -122,18 +128,18 @@ const SPECIFIC_COURSE_DETAILS: Record<string, CourseDetailOverrides> = {
   'n8n-automation-mastery': {
     language: 'বাংলা',
     heroSummary:
-      'Freelancing, business বা job - ৩০ দিনের ভিতর step-by-step Banglay n8n automation শিখে workflow অটো করতে, সময় বাঁচাতে এবং value বাড়াতে এই কোর্সটি সাজানো হয়েছে।',
+      'Freelancing, business বা job - step-by-step Banglay n8n automation শিখে workflow অটো করা, সময় বাঁচানো, client value বাড়ানো এবং portfolio-ready execution build করার জন্য এই কোর্সটি সাজানো হয়েছে।',
     description:
-      'n8n Automation Mastery একটি practical automation course যেখানে repeat কাজ অটো করা, client-এর কাছে extra value তৈরি করা এবং portfolio-ready workflow বানানো - এই তিনটি জিনিসকে কেন্দ্র করে শেখানো হবে। শুধু basics না, বরং real-world workflow, agency automation, AI data enrichment, client success system এবং productized service launch পর্যন্ত cover করা হবে।',
+      'n8n Automation Mastery একটি practical automation course যেখানে একই কাজ বারবার করে সময় নষ্ট হওয়া, automation না জানায় client miss হওয়া, আর automation কঠিন মনে হওয়া - এই বাস্তব সমস্যাগুলো solve করার mindset দিয়ে শেখানো হবে। শুধু basics না, বরং n8n basics to pro, real-world workflows, freelancing & earning, agency automation toolkit, AI + data enrichment, client success system এবং productized service launch পর্যন্ত visible use-case ভিত্তিক flow cover করা হবে।',
     outcomeSummary:
-      'এই কোর্স শেষে আপনি নিজের use-case অনুযায়ী n8n workflow plan, build, debug এবং deliver করতে পারবেন; একই সাথে freelancing, agency delivery বা business automation-এর জন্য usable workflow portfolio তৈরি করতে পারবেন।',
+      'এই কোর্স শেষে আপনি নিজের use-case অনুযায়ী n8n workflow plan, build, debug এবং deliver করতে পারবেন; একই সাথে lead capture, CRM sync, e-commerce order processing, approval flow, reporting, client onboarding বা support automation-এর মতো কাজের জন্য usable workflow portfolio তৈরি করতে পারবেন।',
     deliverables: [
       'Lifetime access, কোনো monthly fee নাই',
-      'All future updates free',
+      'n8n setup এবং basic interface পুরোপুরি শেখার structured lesson flow',
+      'Node, connection, workflow structure, error handling ও debugging practice',
+      'Real-world workflow use-case: lead, CRM, email ও e-commerce automation',
       'Bonus: weekly live Q&A session access',
-      'Bangla support',
-      'Project-based learning',
-      'Private support group access',
+      'Bangla support ও private support group access',
       'Certificate of completion',
     ],
     audience: [
@@ -141,35 +147,181 @@ const SPECIFIC_COURSE_DETAILS: Record<string, CourseDetailOverrides> = {
       'Business owners যারা repetitive কাজ অটোমেট করে time ও cost save করতে চান',
       'Agency owners যারা client delivery pipeline automate করে margin ও retention বাড়াতে চান',
       'Sales বা marketing team যারা lead capture, sync এবং reporting automate করতে চান',
+      'Ops manager, ecommerce operator, data team বা support team যারা process automation চান',
       'Beginner learner বা career switcher যারা automation-এ practicalভাবে ঢুকতে চান',
     ],
     workflow: [
-      'Enroll করার পর step-by-step lesson flow ধরে n8n basics থেকে pro workflow পর্যন্ত শিখবেন',
-      'Instant access পেয়ে private group-এ join করে real-world workflow build এবং test করবেন',
-      'Learn & Earn flow-এ portfolio-ready automation বানিয়ে client বা business use-case-এ apply করবেন',
+      'প্রথমে n8n basics to pro flow ধরে setup, interface, node, connection আর workflow structure শিখবেন',
+      'তারপর real-world workflow phase-এ lead save, email automation, CRM integration আর e-commerce flow build করবেন',
+      'শেষে freelancing, agency toolkit, client success system আর productized service launch angle দিয়ে portfolio-ready automation বানাবেন',
     ],
     tools: ['n8n', 'Google Sheets', 'CRM integrations', 'OpenAI', 'Webhooks', 'Reporting dashboard tools'],
     support:
-      'Weekly live Q&A session, private support group এবং Bangla step-by-step guidance থাকবে, যাতে beginner হলেও stuck point clear করা যায়।',
+      'Weekly live Q&A session, private support group এবং Bangla step-by-step guidance থাকবে, যাতে beginner হলেও stuck point clear করা যায় এবং workflow polish করা যায়।',
     certificate: 'কোর্সের মূল flow complete করলে Deshi Course থেকে certificate of completion পাবেন।',
     facts: [
-      { label: 'সময়', value: '৩০ দিন' },
-      { label: 'সাপোর্ট', value: 'Bangla' },
-      { label: 'স্টাইল', value: 'Project-based' },
-      { label: 'বোনাস', value: 'Weekly Q&A' },
+      { label: 'ফোকাস', value: 'Basics to Pro' },
+      { label: 'স্টাইল', value: 'Practical workflow' },
+      { label: 'মডিউল', value: '13 + Bonus' },
+      { label: 'সাপোর্ট', value: 'Bangla + private group' },
     ],
     faq: [
       {
         question: 'এই কোর্সে কী ধরনের workflow শিখব?',
-        answer: 'n8n basics, real-world workflows, freelancing workflow, agency automation, AI + data enrichment এবং client success system-এর মতো practical area cover করা হবে।',
+        answer: 'n8n basics, real-world workflows, freelancing workflow, agency automation toolkit, AI + data enrichment, client success system এবং productized service launch-এর মতো practical area cover করা হবে।',
       },
       {
         question: 'Beginner হলেও কি এই course follow করা যাবে?',
-        answer: 'হ্যাঁ। Source page-এ এটি Bangla step-by-step practical learning হিসেবে positioned, তাই শুরু থেকে workflow logic ধরেই শেখানো হবে।',
+        answer: 'হ্যাঁ। এটি Bangla step-by-step practical learning flow হিসেবে সাজানো, তাই setup, interface আর basic workflow logic থেকেই শেখানো হবে।',
       },
       {
         question: 'Freelancing বা client work-এর জন্য useful হবে?',
-        answer: 'হ্যাঁ। শেখার অংশে automation service, Upwork/Fiverr strategy, client onboarding, reminder automation এবং retention flow-এর মতো use-case দেখানো হয়েছে।',
+        answer: 'হ্যাঁ। visible course outline-এ automation service, Upwork/Fiverr strategy, client onboarding, reminder automation, retention flow এবং productized service launch-এর use-case দেখানো হয়েছে।',
+      },
+    ],
+    modules: [
+      {
+        title: 'Module 1: Fundamentals of n8n',
+        lessons: [
+          'What Is n8n & How Automation Works',
+          'Course Introduction',
+          'What Are AI Agents & Why They Matter',
+          'Agent vs AI Workflow Explained',
+        ],
+      },
+      {
+        title: 'Module 2: n8n Core Fundamentals',
+        lessons: [
+          'Run n8n on Your Computer',
+          'Exploring n8n Dashboard & UI',
+          'Understanding JSON & Data Types in n8n',
+          'Understanding n8n Triggers',
+        ],
+      },
+      {
+        title: 'Module 3: Basic AI Building',
+        lessons: [
+          'Connecting Your First Integration: Google Auth',
+          'Build Your First AI-Powered Workflow',
+          'Email Agent: Smart Auto Sender',
+          'Gmail Manager: Auto Labeling & Sorting',
+          'Daily Motivational Agent',
+          'Daily Weather Alert Bot',
+          'AI Prompt Enhancer Agent',
+          'Webinar Registration + Auto Email System',
+          'Import Ready-Made n8n Workflows',
+          'Understanding APIs: From Basic to Intermediate',
+        ],
+      },
+      {
+        title: 'Module 4: n8n Core Nodes',
+        lessons: [
+          'Exploring Core Helper Nodes: If, Merge, Switch, etc.',
+          'Deep Dive: The Set Node',
+          'Output Parser Explained',
+          'Handling Multiple Items: Looping in n8n',
+          'AI in n8n: The Text Classifier Node',
+          'Understanding Memory Keys in n8n',
+        ],
+      },
+      {
+        title: 'Module 5: Real-World Project - Business Operations',
+        lessons: [
+          'System Message Writing Guide & Core Explanation',
+          'Project: AI Inventory Management Agent',
+          'Project: AI Restaurant Management Agent',
+          'Project: AI Voice Calling Agent',
+        ],
+      },
+      {
+        title: 'Module 6: Real-World Projects',
+        lessons: [
+          'Messenger Agent Part 1: Webhook Verification & Setup',
+          'Messenger Agent Part 2: Building the First Basic Agent',
+          'Messenger Agent Part 3: Tool Calling & Agentic Actions',
+          'Messenger Agent Part 4: Full Order Management',
+          'Messenger Agent Part 5: AI Agent Sending Images to Customers',
+          'Part 6: Straightforward RAG & Live Production Troubleshooting',
+          'Messenger Agent Part 7: Adding Image & Voice Message Support',
+          'Messenger Agent Part 7: Fraud Detection',
+          'Messenger Agent Part 8: Chat Transfer Protocol and Client Dashboard',
+          'Vibe API Compute Credits Explained Update',
+          'Facebook Autoposting Part 1',
+          'Facebook Autoposting Part 2',
+          'Facebook Autoposting Part 3',
+          'Facebook Autoposting Part 4',
+          'Facebook Autoposting Part 5',
+          'Facebook Dev App Live Method, Image Analyze with Gemini, WhatsApp Image Webhooks',
+          'n8n Update and Vibe Tech Automation Workflow Explained',
+          'Project: Facebook Auto-Comment Agent',
+          'Messenger Typing Effect, Chat Transfer Protocol, Brutal APIs',
+          'Bonus: How to Monetize Your Facebook Comment Agent',
+          'Advanced: Integrating WhatsApp',
+          'Understanding WhatsApp Official vs Unofficial APIs',
+          'WhatsApp Unofficial API: Wasender Integration & Account Connect',
+          'WhatsApp Webhook: Echo Bot, Messaging & Media Download',
+          'WhatsApp Perplexity API Implementation',
+          'Automating WordPress with WooCommerce Webhooks',
+          'Fix Feed Webhook',
+        ],
+      },
+      {
+        title: 'Module 7: RAG',
+        lessons: [
+          'How RAG Works',
+          'Intro to Vector DB: Pinecone Setup',
+          'RAG Chatbot: Simple Explanation and Use Cases',
+          'Email Customer Support RAG Agent with Feedback',
+        ],
+      },
+      {
+        title: 'Module 8: Advanced Skill - Web & Data Scraping',
+        lessons: [
+          'Introduction to Data Scraping with n8n',
+          'MCP Server: Where to Use',
+          'Project: Scraping Leads from Apollo.io',
+          'AI ASMR Video Workflow',
+        ],
+      },
+      {
+        title: 'Module 9: n8n Updates',
+        lessons: [
+          'n8n New Data Tables: Import & Use Cases',
+        ],
+      },
+      {
+        title: 'Module 10: Vibe',
+        lessons: [
+          'Bolt/Loveable Vibe Coding Part 1: Todo List',
+          'Vibe Coding Part 2',
+        ],
+      },
+      {
+        title: 'Module 11: Airtable',
+        lessons: [
+          'Airtable Connection, Inventory Management, AI Futures',
+          'Airtable Interface Building, Omni AI, Form Creation',
+        ],
+      },
+      {
+        title: 'Module 12: AI API Keys & Setup',
+        lessons: [
+          'OpenRouter: Usage & Explanation',
+          'OpenAI Billing, API Keys & n8n Connection - Complete Guide',
+        ],
+      },
+      {
+        title: 'Module 13: Connecting n8n to Redis & MongoDB',
+        lessons: [
+          'Advanced: Creating Chat Memory with MongoDB',
+          'Redis Chat Memory Connection (Upstash)',
+        ],
+      },
+      {
+        title: 'Bonus',
+        lessons: [
+          'Project: Facebook Messenger Agent',
+        ],
       },
     ],
   },
@@ -209,7 +361,7 @@ const SPECIFIC_COURSE_DETAILS: Record<string, CourseDetailOverrides> = {
     certificate: 'Course flow complete করলে certificate of completion দেওয়া হবে।',
     facts: [
       { label: 'সময়', value: '৩০ দিন' },
-      { label: 'সাপোর্ট', value: 'Bangla' },
+      { label: 'মডিউল', value: '12' },
       { label: 'স্টাইল', value: 'Project-based shipping' },
       { label: 'বোনাস', value: 'Build review' },
     ],
@@ -225,6 +377,129 @@ const SPECIFIC_COURSE_DETAILS: Record<string, CourseDetailOverrides> = {
       {
         question: 'Client delivery বা monetization angle-ও আছে?',
         answer: 'হ্যাঁ। Client Success System এবং Launch & Monetize section-এ scope control, handoff, documentation, pricing, offers এবং inbound leads playbook-এর মতো বিষয় আছে।',
+      },
+    ],
+    modules: [
+      {
+        title: 'Module 1: Starting with Lovable.dev',
+        lessons: [
+          'Lovable টুল-এর বেসিক কার্যকারিতা ব্যাখ্যা',
+          'Product Requirement Document (PRD) কী এবং কেন দরকার',
+          'PRD কীভাবে একটি প্রকল্পের জন্য তৈরি ও সাজানো হয়',
+          'PRD আরও পরিষ্কার ও কার্যকর করা',
+          'ডেটাবেস স্কিমা ডিজাইন করা',
+          'Vibe Coding-এ AI-কে নির্দেশ দিয়ে কোড build করার পদ্ধতি',
+        ],
+      },
+      {
+        title: 'Module 2: Build Your First Landing Page',
+        lessons: [
+          'একটি landing page-এর UI/Frontend তৈরি করার ধাপ',
+          'Backend যুক্ত করে page-কে কার্যকরভাবে কাজ করানো',
+          'Supabase-এর সাথে connection স্থাপন করা',
+          'GitHub-এ project ঠিকভাবে maintain করা',
+          'Free hosting-এ project deploy করা',
+          'Paid hosting-এ একই project live করা',
+        ],
+      },
+      {
+        title: 'Module 3: Starting Complex Ecommerce Site with Lovable.dev',
+        lessons: [
+          'Ecommerce site তৈরি করার সঠিক ও কার্যকর পদ্ধতি',
+          'User authentication (login/registration) setup',
+          'Responsive ও fully functional frontend design',
+          'পূর্ণাঙ্গ admin dashboard তৈরি',
+          'Database তৈরি এবং Supabase-এর সাথে connect',
+          'প্রস্তুত ecommerce site live deploy করা',
+        ],
+      },
+      {
+        title: 'Module 4: More Aggressive Design',
+        lessons: [
+          'Design guideline তৈরি',
+          'বিভিন্ন design পদ্ধতি ও technique শেখা',
+          'উন্নত design tips ও tricks',
+        ],
+      },
+      {
+        title: 'Module 5: Next Level Vibe Coding with LMS Sites',
+        lessons: [
+          'LMS-এর PRD ও database schema তৈরি',
+          'LMS site-এর frontend design',
+          'Admin ও student dashboard wireframe তৈরি',
+          'User authentication ও student dashboard feature যুক্ত করা',
+          'Payment gateway integration',
+          'LMS build-এর জন্য গুরুত্বপূর্ণ note ও পরামর্শ',
+        ],
+      },
+      {
+        title: 'Module 6: Vibe with Demanding Tools',
+        lessons: [
+          'Project management software তৈরি',
+          'Money management software তৈরি',
+          'Content calendar app তৈরি',
+          'Business growth tracker তৈরি',
+          'Inventory management app তৈরি',
+        ],
+      },
+      {
+        title: 'Module 7: Get Lifetime Free Hosting',
+        lessons: [
+          'Landing page-এর জন্য hosting setup',
+          'যেকোনো website deploy করা',
+          'App বা software host করা',
+          'Free hosting-এ custom domain set করা',
+        ],
+      },
+      {
+        title: 'Module 8: Base44 Basic to Advance',
+        lessons: [
+          'Base44 টুল-এর basic পরিচিতি',
+          'Prompt engineering-এ ChatGPT, Claude ও Gemini-কে train করা',
+          'একটি নতুন landing page তৈরি',
+          'একটি সম্পূর্ণ agency site তৈরি',
+          'Freelancer বা agency-এর জন্য micro CRM তৈরি',
+          'Coaching center management app তৈরি',
+        ],
+      },
+      {
+        title: 'Module 9: Bolt AI & Cursor AI',
+        lessons: [
+          'ChatGPT ও Claude-কে train করা',
+          'Local school / madrasa management software তৈরি',
+          'Donation & funds management software তৈরি',
+          'Small business POS management software তৈরি',
+          'Business expense + cashflow tracker তৈরি',
+        ],
+      },
+      {
+        title: 'Module 10: Client Ready Portfolio',
+        lessons: [
+          'Portfolio site তৈরি',
+          'Personal branding গঠন',
+          'একটি team তৈরি ও manage করা',
+          'Team management-এর পদ্ধতি শেখা',
+          'Leadership skills উন্নত করা',
+          'Sustain & grow strategy',
+        ],
+      },
+      {
+        title: 'Module 11: Start Earning',
+        lessons: [
+          'Local freelancing market বুঝা',
+          'Freelance marketplace-এর নিয়ম এবং সুযোগ',
+          'Remote job opportunities-এর পথ',
+          'বিনা খরচে clients পাওয়া strategy',
+        ],
+      },
+      {
+        title: 'Module 12: Passive Earning',
+        lessons: [
+          'Passive earning product 1 (SaaS idea 1) রূপায়ণ',
+          'SaaS idea 2 দিয়ে entrepreneur problem solve করা',
+          'SaaS idea 3-এর পরিকল্পনা ও নির্মাণ',
+          'Ultimate SaaS idea 4-এর বাস্তবায়ন',
+        ],
       },
     ],
   },

@@ -39,7 +39,7 @@ export default function Infographic({
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3 md:gap-8">
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3 lg:gap-8">
           {visibleBundles.map((bundle, index) => {
             const hideOnDesktop =
               typeof mobileLimit === 'number' &&
@@ -51,7 +51,7 @@ export default function Infographic({
             return (
             <article
               key={bundle.id}
-              className={`flex min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl ${hideOnDesktop ? 'md:hidden' : ''}`}
+              className={`flex min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl ${hideOnDesktop ? 'lg:hidden' : ''}`}
             >
               <div className="relative h-28 overflow-hidden sm:h-48">
                 <Image
@@ -59,6 +59,7 @@ export default function Infographic({
                   alt={bundle.title}
                   fill
                   className="object-cover"
+                  unoptimized={bundle.image.startsWith('/api/catalog-art')}
                   referrerPolicy="no-referrer"
                   sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 360px"
                 />

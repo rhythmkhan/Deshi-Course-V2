@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
 import CartPageContent from '@/components/CartPageContent';
@@ -22,7 +23,9 @@ export default function CartPage() {
 
       <section className="py-10 sm:py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-20">
-          <CartPageContent />
+          <Suspense fallback={null}>
+            <CartPageContent />
+          </Suspense>
         </div>
       </section>
       <Footer />

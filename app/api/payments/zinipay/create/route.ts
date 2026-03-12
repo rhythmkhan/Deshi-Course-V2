@@ -57,6 +57,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       courseSlug?: string;
       items?: CartItemInput[];
+      couponCode?: string;
       source?: 'course' | 'cart';
     };
 
@@ -73,8 +74,8 @@ export async function POST(request: Request) {
     const fromCartParam = isCartCheckout || body.source === 'cart' ? '&fromCart=1' : '';
     const orderStartedAt = performance.now();
     const pending = isCartCheckout
-      ? await createPendingCartOrder(checkoutItems)
-      : await createPendingOrder(body.courseSlug as string);
+      ? await createPendingCartOrder(checkoutItems, body.couponCode)
+      : await createPendingOrder(body.courseSlug as string, body.couponCode);
     const orderFinishedAt = performance.now();
     const baseUrl = getRequestSiteUrl({ request, headers: request.headers });
     const metadata: Record<string, string | number> = isCartCheckout
@@ -85,11 +86,13 @@ export async function POST(request: Request) {
             .map((item) => `${item.type}:${item.slug}`)
             .join(','),
           userId: pending.user.id,
+          couponCode: pending.pricing.appliedCoupon?.code ?? '',
         }
       : {
           orderId: pending.orderId,
           courseSlug: (pending as Awaited<ReturnType<typeof createPendingOrder>>).course.slug,
           userId: pending.user.id,
+          couponCode: pending.pricing.appliedCoupon?.code ?? '',
         };
 
     const ziniStartedAt = performance.now();

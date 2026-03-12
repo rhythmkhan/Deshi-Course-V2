@@ -352,6 +352,12 @@ export default function DashboardPage() {
       return;
     }
 
+    if (referralCode && normalizedCode === referralCode.trim().toUpperCase()) {
+      setReferralError('নিজের referral code ব্যবহার করা যাবে না।');
+      setReferralMessage('');
+      return;
+    }
+
     setIsApplyingReferral(true);
     setReferralError('');
     setReferralMessage('');
@@ -363,7 +369,38 @@ export default function DashboardPage() {
     setIsApplyingReferral(false);
 
     if (error) {
-      setReferralError('Referral feature চালাতে Supabase referral migration run করতে হবে।');
+      const errorMessage =
+        error.message ||
+        error.details ||
+        error.hint ||
+        error.code ||
+        'Unknown referral error';
+      const errorDetails = [error.details, error.hint, error.code].filter(Boolean).join(' | ');
+
+      console.warn('claim_referral RPC failed', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+
+      const normalizedError = errorMessage.toLowerCase();
+
+      if (
+        normalizedError.includes('function public.claim_referral') ||
+        normalizedError.includes('function claim_referral') ||
+        normalizedError.includes('column "referral_code"') ||
+        normalizedError.includes('column "pending_referral_code"') ||
+        normalizedError.includes('column "welcome_discount_uses_remaining"') ||
+        normalizedError.includes('relation "public.referrals" does not exist')
+      ) {
+        setReferralError('Referral feature চালাতে Supabase referral migration run করতে হবে।');
+        return;
+      }
+
+      setReferralError(
+        errorDetails ? `Referral error: ${errorMessage} (${errorDetails})` : `Referral error: ${errorMessage}`,
+      );
       return;
     }
 
@@ -751,7 +788,7 @@ export default function DashboardPage() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-grow overflow-y-auto p-4 pb-28 md:p-6 lg:p-10 lg:pb-10">
+      <main className="flex-grow overflow-y-auto p-4 pb-[calc(env(safe-area-inset-bottom)+8rem)] md:p-6 md:pb-[calc(env(safe-area-inset-bottom)+8.5rem)] lg:p-10 lg:pb-10">
         <header className="hidden lg:flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">ড্যাশবোর্ড</h1>

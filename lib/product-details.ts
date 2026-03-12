@@ -73,22 +73,25 @@ function buildGenericProductDetail(product: ShopItem): ProductDetailContent {
 const SPECIFIC_PRODUCT_DETAILS: Record<string, ProductDetailContent> = {
   'n8n-20k-templates': {
     overview:
-      'n8n workflow manually from scratch না বানিয়ে দ্রুত ready automation use করতে চাইলে এই template library সবচেয়ে useful। বিভিন্ন use-case অনুযায়ী pack-by-pack templates পাবেন এবং plug-and-play setup guide follow করে দ্রুত চালু করতে পারবেন।',
+      'n8n workflow manually from scratch না বানিয়ে দ্রুত ready automation use করতে চাইলে এই template library সবচেয়ে useful। lead, CRM, e-commerce, marketing, ops বা reporting use-case অনুযায়ী pack-by-pack templates পাবেন এবং plug-and-play setup guide follow করে দ্রুত চালু করতে পারবেন।',
     deliverables: [
       'Templates lifetime access, কোনো monthly fee নাই',
       '20,000+ ready-made n8n templates',
       'Lead / CRM / Ecom / Marketing template packs',
+      'Real-world workflow use-case library',
       'Plug-and-play setup guide',
       'Monthly new template drops',
     ],
     useCases: [
       'lead collection, follow-up বা CRM automation দ্রুত চালু করতে',
       'ecommerce, marketing বা reporting workflow setup করতে',
+      'ops, alerts, enrichment বা approval workflow দ্রুত দাঁড় করাতে',
       'নিজের use-case অনুযায়ী ready template customize করতে',
     ],
     audience: [
       'automation learner যারা ready example collection চান',
       'agency, operator বা business owner যারা দ্রুত deploy করতে চান',
+      'ecommerce ops, marketing team, data folks বা ops manager যারা repeat কাজ অটো করতে চান',
       'n8n user যারা use-case library expand করতে চান',
     ],
     workflow: [
@@ -111,11 +114,11 @@ const SPECIFIC_PRODUCT_DETAILS: Record<string, ProductDetailContent> = {
       },
     ],
     support:
-      'Access-এর সাথে setup direction থাকবে, আর template pack structure এমনভাবে দেওয়া হবে যাতে use-case অনুযায়ী দ্রুত pick করতে পারেন।',
+      'Access-এর সাথে setup direction থাকবে, আর template pack structure এমনভাবে দেওয়া হবে যাতে use-case অনুযায়ী দ্রুত pick, adapt এবং launch করতে পারেন।',
     facts: [
       { label: 'অ্যাক্সেস', value: 'Lifetime' },
       { label: 'টেমপ্লেট', value: '20K+' },
-      { label: 'ড্রপ', value: 'Monthly new' },
+      { label: 'ফোকাস', value: 'Real workflows' },
       { label: 'সেটআপ', value: 'Plug-and-play' },
     ],
   },

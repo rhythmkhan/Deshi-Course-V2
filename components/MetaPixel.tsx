@@ -58,27 +58,27 @@ export default function MetaPixel() {
               firstScript.parentNode.insertBefore(script, firstScript);
             };
 
-            let pixelLoaded = false;
-            const schedulePixelLoad = () => {
-              if (pixelLoaded) {
+            let booted = false;
+
+            const bootPixel = () => {
+              if (booted) {
                 return;
               }
 
-              pixelLoaded = true;
-              window.removeEventListener('pointerdown', schedulePixelLoad);
-              window.removeEventListener('keydown', schedulePixelLoad);
-              window.removeEventListener('touchstart', schedulePixelLoad);
-              window.removeEventListener('scroll', schedulePixelLoad);
+              booted = true;
+              fbq('init', '${pixelId}');
+              flushPendingEvents();
               loadPixelLibrary();
+
+              window.removeEventListener('pointerdown', bootPixel);
+              window.removeEventListener('keydown', bootPixel);
+              window.removeEventListener('scroll', bootPixel);
             };
 
-            fbq('init', '${pixelId}');
-            flushPendingEvents();
-            window.addEventListener('pointerdown', schedulePixelLoad, { once: true, passive: true });
-            window.addEventListener('keydown', schedulePixelLoad, { once: true });
-            window.addEventListener('touchstart', schedulePixelLoad, { once: true, passive: true });
-            window.addEventListener('scroll', schedulePixelLoad, { once: true, passive: true });
-            window.setTimeout(schedulePixelLoad, 15000);
+            window.addEventListener('pointerdown', bootPixel, { once: true, passive: true });
+            window.addEventListener('keydown', bootPixel, { once: true });
+            window.addEventListener('scroll', bootPixel, { once: true, passive: true });
+            window.setTimeout(bootPixel, 6000);
           })();
         `}
       </Script>

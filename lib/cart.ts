@@ -1,4 +1,10 @@
 import { BUNDLE_CATALOG } from './bundle-catalog';
+import {
+  calculateCouponDiscount,
+  getCouponEligibleSubtotal,
+  type AppliedCoupon,
+  type CouponPricingRule,
+} from './coupons';
 import { COURSE_CATALOG } from './course-catalog';
 import { REFERRAL_DISCOUNT_RATE } from './referral';
 import { SHOP_CATALOG } from './shop-catalog';
@@ -142,6 +148,7 @@ export function getCartPricingPreview(
   items: CartCatalogItem[],
   walletBalance: number,
   welcomeDiscountUsesRemaining: number,
+  coupon?: CouponPricingRule | null,
 ) {
   const pricedItems = getPricedCartItems(items);
   const catalogSubtotal = roundAmount(items.reduce((total, item) => total + item.price, 0));
@@ -163,8 +170,22 @@ export function getCartPricingPreview(
       : 0;
   const referralDiscount = roundAmount(eligibleCoursePrice * REFERRAL_DISCOUNT_RATE);
   const subtotalAfterReferral = roundAmount(Math.max(listSubtotal - referralDiscount, 0));
-  const walletDiscount = roundAmount(Math.min(walletBalance, subtotalAfterReferral));
-  const finalPrice = roundAmount(Math.max(subtotalAfterReferral - walletDiscount, 0));
+  const couponEligibleSubtotal = coupon
+    ? getCouponEligibleSubtotal(pricedItems, coupon, referralDiscount)
+    : 0;
+  const couponDiscount = coupon
+    ? calculateCouponDiscount(couponEligibleSubtotal, coupon)
+    : 0;
+  const subtotalAfterCoupon = roundAmount(Math.max(subtotalAfterReferral - couponDiscount, 0));
+  const walletDiscount = roundAmount(Math.min(walletBalance, subtotalAfterCoupon));
+  const finalPrice = roundAmount(Math.max(subtotalAfterCoupon - walletDiscount, 0));
+  const appliedCoupon: AppliedCoupon | null =
+    coupon && couponDiscount > 0
+      ? {
+          ...coupon,
+          discountAmount: couponDiscount,
+        }
+      : null;
 
   return {
     pricedItems,
@@ -173,10 +194,13 @@ export function getCartPricingPreview(
     originalSubtotal,
     overlapDiscount,
     referralDiscount,
+    couponDiscount,
     walletDiscount,
     finalPrice,
     itemCount: items.length,
+    appliedCoupon,
     hasReferralDiscount: referralDiscount > 0,
+    hasCouponDiscount: couponDiscount > 0,
     hasWalletDiscount: walletDiscount > 0,
   };
 }

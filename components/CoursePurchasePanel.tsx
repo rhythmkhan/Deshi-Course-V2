@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { BadgeCheck, Coins, LoaderCircle, TicketPercent } from 'lucide-react';
 import AddToCartButton from './AddToCartButton';
 import { useAuth } from './AuthProvider';
+import CheckoutCouponField from './CheckoutCouponField';
+import type { CouponPricingRule } from '@/lib/coupons';
 import { formatPrice, getPricingPreview } from '@/lib/referral';
 import { generateMetaEventId, trackMetaEvent } from '@/lib/meta-client';
 import { buildMetaContentType } from '@/lib/meta';
@@ -30,7 +32,9 @@ interface PricingState {
 export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { supabase, user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const handledCouponRef = useRef('');
   const [pricingState, setPricingState] = useState<PricingState>({
     walletBalance: 0,
     welcomeDiscountUsesRemaining: 0,
@@ -39,6 +43,10 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
   });
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
+  const [couponInput, setCouponInput] = useState('');
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [couponError, setCouponError] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponPricingRule | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -98,7 +106,63 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
     course.price,
     pricingState.walletBalance,
     pricingState.welcomeDiscountUsesRemaining,
+    appliedCoupon,
   );
+
+  const couponFromUrl = searchParams.get('coupon') ?? searchParams.get('couponCode') ?? '';
+
+  const applyCouponCode = useCallback(async (code: string) => {
+    setIsApplyingCoupon(true);
+    setCouponError('');
+
+    try {
+      const response = await fetch('/api/coupons/preview', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          courseSlug: course.slug,
+          couponCode: code,
+        }),
+      });
+
+      const data = (await response.json()) as { coupon?: CouponPricingRule; error?: string };
+
+      if (!response.ok || !data.coupon) {
+        setAppliedCoupon(null);
+        throw new Error(data.error || 'Coupon apply করা যায়নি।');
+      }
+
+      setAppliedCoupon(data.coupon);
+    } catch (error) {
+      setCouponError(error instanceof Error ? error.message : 'Coupon apply করা যায়নি।');
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  }, [course.slug]);
+
+  useEffect(() => {
+    const normalizedCoupon = couponFromUrl.trim().toUpperCase();
+
+    if (!normalizedCoupon || handledCouponRef.current === normalizedCoupon) {
+      return;
+    }
+
+    handledCouponRef.current = normalizedCoupon;
+    setCouponInput(normalizedCoupon);
+    void applyCouponCode(normalizedCoupon);
+  }, [applyCouponCode, couponFromUrl]);
+
+  async function handleApplyCoupon() {
+    await applyCouponCode(couponInput.trim().toUpperCase());
+  }
+
+  function handleRemoveCoupon() {
+    setAppliedCoupon(null);
+    setCouponInput('');
+    setCouponError('');
+  }
 
   async function handleCheckout() {
     if (!isAuthenticated) {
@@ -131,6 +195,7 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
         },
         body: JSON.stringify({
           courseSlug: course.slug,
+          couponCode: appliedCoupon?.code,
         }),
       });
 
@@ -185,6 +250,15 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
         </div>
         <div className="mt-3 flex items-center justify-between text-sm">
           <span className="flex items-center gap-2 text-gray-500">
+            <TicketPercent className="h-4 w-4 text-brand" />
+            Coupon discount
+          </span>
+          <span className="font-bold text-brand">
+            {preview.hasCouponDiscount ? `- ৳ ${formatPrice(preview.couponDiscount)}` : '৳ 0.00'}
+          </span>
+        </div>
+        <div className="mt-3 flex items-center justify-between text-sm">
+          <span className="flex items-center gap-2 text-gray-500">
             <Coins className="h-4 w-4 text-brand" />
             Wallet discount
           </span>
@@ -197,10 +271,20 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
             <span className="text-sm font-bold text-gray-900">এখন দিতে হবে</span>
             <span className="text-2xl font-bold text-gray-900">৳ {formatPrice(preview.finalPrice)}</span>
           </div>
-          <p className="mt-2 text-xs text-gray-500">
-            ১০০ টাকার course-এ referred নতুন user ৳90 দেবে, আর referrer wallet-এ ৳10 credit জমা হবে।
-          </p>
         </div>
+      </div>
+
+      <div className="mb-5">
+        <CheckoutCouponField
+          code={couponInput}
+          onCodeChange={setCouponInput}
+          onApply={handleApplyCoupon}
+          onRemove={handleRemoveCoupon}
+          isApplying={isApplyingCoupon}
+          appliedCoupon={appliedCoupon}
+          error={couponError}
+          disabled={isCheckingOut}
+        />
       </div>
 
       <div className="space-y-3 text-sm text-gray-600">
@@ -212,20 +296,22 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
         ))}
       </div>
 
-      <div className="mt-5 rounded-2xl bg-brand/5 p-4 text-sm text-gray-600">
-        {pricingState.isLoading ? (
-          <div className="flex items-center gap-2 text-brand">
-            <LoaderCircle className="h-4 w-4 animate-spin" />
-            <span>আপনার wallet ও referral সুবিধা load হচ্ছে...</span>
-          </div>
-        ) : pricingState.welcomeDiscountUsesRemaining > 0 ? (
-          <p>আপনার account-এ referral discount active আছে। প্রথম নতুন course-এ ১০% off পাবেন।</p>
-        ) : !pricingState.isAuthenticated ? (
-          <p>এই course detail public, তবে payment start করার আগে sign in করতে হবে।</p>
-        ) : (
-          <p>Referral code ব্যবহার করলে eligible course purchase-এ discount apply হবে, আর earned wallet credit next order-এ কেটে যাবে।</p>
-        )}
-      </div>
+      {(pricingState.isLoading ||
+        pricingState.welcomeDiscountUsesRemaining > 0 ||
+        !pricingState.isAuthenticated) && (
+        <div className="mt-5 rounded-2xl bg-brand/5 p-4 text-sm text-gray-600">
+          {pricingState.isLoading ? (
+            <div className="flex items-center gap-2 text-brand">
+              <LoaderCircle className="h-4 w-4 animate-spin" />
+              <span>আপনার wallet ও referral সুবিধা load হচ্ছে...</span>
+            </div>
+          ) : pricingState.welcomeDiscountUsesRemaining > 0 ? (
+            <p>আপনার account-এ referral discount active আছে। প্রথম নতুন course-এ ১০% off পাবেন।</p>
+          ) : (
+            <p>এই course detail public, তবে payment start করার আগে sign in করতে হবে।</p>
+          )}
+        </div>
+      )}
 
       <div className="mt-6 space-y-3">
         <button

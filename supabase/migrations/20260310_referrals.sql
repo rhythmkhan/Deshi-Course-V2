@@ -175,7 +175,7 @@ begin
   select *
   into referrer
   from public.profiles
-  where referral_code = normalized_code;
+  where public.profiles.referral_code = normalized_code;
 
   if not found then
     return query select false, 'Referral codeটি valid না।', claimant.wallet_balance, claimant.welcome_discount_uses_remaining, claimant.referral_code;
@@ -191,7 +191,7 @@ begin
   set
     referred_by = referrer.id,
     pending_referral_code = null,
-    welcome_discount_uses_remaining = greatest(welcome_discount_uses_remaining, 1),
+    welcome_discount_uses_remaining = greatest(public.profiles.welcome_discount_uses_remaining, 1),
     updated_at = timezone('utc', now())
   where id = current_user_id;
 

@@ -51,6 +51,18 @@ const DELIVERY_RULES: Array<{
   },
   {
     track: 'n8n',
+    itemType: 'bundle',
+    slug: 'ai-career-duo-bundle',
+    resources: ['course', 'support'],
+  },
+  {
+    track: 'n8n',
+    itemType: 'bundle',
+    slug: 'creator-launch-bundle',
+    resources: ['template'],
+  },
+  {
+    track: 'n8n',
     itemType: 'shop',
     slug: 'n8n-20k-templates',
     resources: ['template'],
@@ -66,6 +78,18 @@ const DELIVERY_RULES: Array<{
     itemType: 'bundle',
     slug: 'vibe-coding-prompt-library',
     resources: ['course', 'support', 'template'],
+  },
+  {
+    track: 'vibe',
+    itemType: 'bundle',
+    slug: 'ai-career-duo-bundle',
+    resources: ['course', 'support'],
+  },
+  {
+    track: 'vibe',
+    itemType: 'bundle',
+    slug: 'creator-launch-bundle',
+    resources: ['course', 'support'],
   },
   {
     track: 'vibe',
@@ -200,22 +224,24 @@ export function resolveDeliveryRequirements(items: DeliveryItem[]) {
   const requirements = new Map<DeliveryTrack, Set<DeliveryResource>>();
 
   for (const item of items) {
-    const rule = DELIVERY_RULES.find(
+    const matchingRules = DELIVERY_RULES.filter(
       (entry) => entry.itemType === item.itemType && entry.slug === item.slug,
     );
 
-    if (!rule) {
+    if (matchingRules.length === 0) {
       continue;
     }
 
-    const trackResources =
-      requirements.get(rule.track) ?? new Set<DeliveryResource>();
+    for (const rule of matchingRules) {
+      const trackResources =
+        requirements.get(rule.track) ?? new Set<DeliveryResource>();
 
-    for (const resource of rule.resources) {
-      trackResources.add(resource);
+      for (const resource of rule.resources) {
+        trackResources.add(resource);
+      }
+
+      requirements.set(rule.track, trackResources);
     }
-
-    requirements.set(rule.track, trackResources);
   }
 
   return requirements;

@@ -1,3 +1,5 @@
+import { buildCatalogArt } from './catalog-art';
+
 export interface BundleItem {
   id: number;
   slug: string;
@@ -13,24 +15,31 @@ export interface BundleItem {
   tag?: string;
 }
 
+const BUNDLE_IMAGE_BY_SLUG: Record<string, string> = {
+  'n8n-course-plus-templates': '/images/bundles/n8n-course-plus-templates.webp',
+  'vibe-coding-prompt-library': '/images/bundles/vibe-coding-prompt-library.webp',
+  'ai-career-duo-bundle': '/images/bundles/ai-career-duo-bundle.webp',
+  'creator-launch-bundle': '/images/bundles/creator-launch-bundle.webp',
+};
+
 export const BUNDLE_CATALOG: BundleItem[] = [
   {
     id: 1,
     slug: 'n8n-course-plus-templates',
     title: 'n8n Course + Templates',
-    subtitle: 'n8n course-এর সাথে ready-made workflow template pack একসাথে',
-    image: '/images/offers/n8n-course-plus-templates.svg',
+    subtitle: 'n8n basics to pro শেখার সাথে ready-made workflow template pack একসাথে',
+    image: BUNDLE_IMAGE_BY_SLUG['n8n-course-plus-templates'],
     bundlePrice: 999,
     originalPrice: 999,
     accessLabel: 'Lifetime access',
-    highlight: 'Course + templates combo',
+    highlight: 'Learn + deploy combo',
     includedCourseSlugs: ['n8n-automation-mastery'],
     featureMetrics: [
-      'Lifetime access, কোনো monthly fee নাই',
-      'All future updates free',
+      'n8n basics থেকে pro শেখার flow',
       'Ready-made n8n workflow templates included',
+      'Lead / CRM / Ecom use-case faster start',
       'Private support group access',
-      'Certificate of completion',
+      'Lifetime access, কোনো monthly fee নাই',
     ],
     tag: 'জনপ্রিয়',
   },
@@ -39,7 +48,7 @@ export const BUNDLE_CATALOG: BundleItem[] = [
     slug: 'vibe-coding-prompt-library',
     title: 'Vibe Coding + Prompt Library',
     subtitle: 'Vibe coding course-এর সাথে prompt library add-on একসাথে',
-    image: '/images/offers/vibe-coding-mastery.webp',
+    image: BUNDLE_IMAGE_BY_SLUG['vibe-coding-prompt-library'],
     bundlePrice: 499,
     originalPrice: 499,
     accessLabel: 'Lifetime access',
@@ -53,6 +62,46 @@ export const BUNDLE_CATALOG: BundleItem[] = [
       'Certificate of completion',
     ],
     tag: 'নতুন',
+  },
+  {
+    id: 3,
+    slug: 'ai-career-duo-bundle',
+    title: 'AI Career Duo Bundle',
+    subtitle: 'n8n automation আর vibe coding - দুইটা flagship course একসাথে',
+    image: BUNDLE_IMAGE_BY_SLUG['ai-career-duo-bundle'] ?? buildCatalogArt('AI Career Duo Bundle', 'bundle', 'Bundle'),
+    bundlePrice: 149,
+    originalPrice: 198,
+    accessLabel: 'Lifetime access',
+    highlight: 'Two-course combo',
+    includedCourseSlugs: ['n8n-automation-mastery', 'vibe-coding-mastery'],
+    featureMetrics: [
+      '২টি flagship course একসাথে',
+      'Lifetime access, কোনো monthly fee নাই',
+      'All future updates free',
+      'n8n + vibe দুই track-এর private support access',
+      'Certificate of completion',
+    ],
+    tag: 'বেস্ট ভ্যালু',
+  },
+  {
+    id: 4,
+    slug: 'creator-launch-bundle',
+    title: 'Creator Launch Bundle',
+    subtitle: 'Vibe coding course-এর সাথে n8n template library নিয়ে launch-ready combo',
+    image: BUNDLE_IMAGE_BY_SLUG['creator-launch-bundle'] ?? buildCatalogArt('Creator Launch Bundle', 'bundle', 'Bundle'),
+    bundlePrice: 799,
+    originalPrice: 998,
+    accessLabel: 'Lifetime access',
+    highlight: 'Course + template stack',
+    includedCourseSlugs: ['vibe-coding-mastery'],
+    featureMetrics: [
+      'Vibe Coding Mastery course included',
+      'n8n 20K+ Templates access included',
+      'Lifetime access, কোনো monthly fee নাই',
+      'All future updates free',
+      'Private support group access',
+    ],
+    tag: 'কম্বো',
   },
 ];
 

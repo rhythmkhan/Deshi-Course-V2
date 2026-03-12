@@ -22,17 +22,20 @@ function HeroActions({ className = '' }: { className?: string }) {
 
 export default function Hero() {
   return (
-    <section className="relative overflow-hidden pb-12 pt-6 sm:pb-20 sm:pt-10 lg:pb-32 lg:pt-24">
+    <section className="relative overflow-hidden pb-8 pt-2 sm:pb-12 sm:pt-4 lg:pb-16 lg:pt-8">
       <div className="absolute top-0 right-0 z-[-1] h-full w-full lg:w-1/2 bg-[radial-gradient(circle_at_70%_30%,rgba(109,40,217,0.1)_0%,rgba(255,255,255,0)_70%)]" />
       
       <div className="mx-auto grid max-w-7xl items-center gap-3 px-4 sm:gap-6 sm:px-6 lg:grid-cols-2 lg:gap-12 lg:px-20">
         <div className="space-y-4 text-center lg:space-y-8 lg:text-left">
           <h1 className="text-4xl font-extrabold leading-[1.1] sm:text-5xl lg:text-7xl">
             <span className="text-brand">দক্ষতা অর্জন করুন।</span><br />
-            সার্টিফাইড হন।
+            কাগজ নয়!
           </h1>
           <p className="mx-auto max-w-lg text-base leading-relaxed text-gray-700 sm:text-lg lg:mx-0 lg:text-xl">
-            আমাদের ব্যাপক সার্টিফিকেশন প্রোগ্রামের সাথে ইন-ডিমান্ড স্কিল শিখুন। ৫০,০০০+ পেশাদারদের সাথে যোগ দিন যারা আমাদের মাধ্যমে তাদের ক্যারিয়ার উন্নত করেছেন।
+            <span className="font-semibold text-brand">ইন-ডিমান্ড স্কিল</span> শিখে গড়ে তুলুন{' '}
+            <span className="font-semibold text-gray-900">আগামীর ক্যারিয়ার</span>।{' '}
+            <span className="font-semibold text-brand">২,০০০+ শিক্ষার্থীর</span> ভরসার প্ল্যাটফর্ম —
+            <span className="font-semibold text-gray-900"> সফলতার পরের ধাপ এখানেই</span>।
           </p>
           <HeroActions className="hidden lg:flex" />
         </div>

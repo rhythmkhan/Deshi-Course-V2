@@ -1,3 +1,9 @@
+import {
+  calculateCouponDiscount,
+  type AppliedCoupon,
+  type CouponPricingRule,
+} from './coupons';
+
 export const REFERRAL_DISCOUNT_RATE = 0.1;
 export const REFERRER_WALLET_CREDIT = 10;
 
@@ -30,20 +36,40 @@ export function getPricingPreview(
   price: number,
   walletBalance: number,
   welcomeDiscountUsesRemaining: number,
+  coupon?: CouponPricingRule | null,
 ) {
   const listPrice = roundAmount(price);
   const referralDiscount =
     welcomeDiscountUsesRemaining > 0 ? roundAmount(listPrice * REFERRAL_DISCOUNT_RATE) : 0;
   const subtotalAfterReferral = roundAmount(listPrice - referralDiscount);
-  const walletDiscount = roundAmount(Math.min(walletBalance, subtotalAfterReferral));
-  const finalPrice = roundAmount(Math.max(subtotalAfterReferral - walletDiscount, 0));
+  const couponEligibleSubtotal =
+    coupon && (coupon.appliesTo === 'all' || coupon.appliesTo === 'course')
+      ? subtotalAfterReferral
+      : 0;
+  const couponDiscount =
+    couponEligibleSubtotal > 0 && coupon
+      ? calculateCouponDiscount(couponEligibleSubtotal, coupon)
+      : 0;
+  const subtotalAfterCoupon = roundAmount(Math.max(subtotalAfterReferral - couponDiscount, 0));
+  const walletDiscount = roundAmount(Math.min(walletBalance, subtotalAfterCoupon));
+  const finalPrice = roundAmount(Math.max(subtotalAfterCoupon - walletDiscount, 0));
+  const appliedCoupon: AppliedCoupon | null =
+    coupon && couponDiscount > 0
+      ? {
+          ...coupon,
+          discountAmount: couponDiscount,
+        }
+      : null;
 
   return {
     listPrice,
     referralDiscount,
+    couponDiscount,
     walletDiscount,
     finalPrice,
+    appliedCoupon,
     hasReferralDiscount: referralDiscount > 0,
+    hasCouponDiscount: couponDiscount > 0,
     hasWalletDiscount: walletDiscount > 0,
   };
 }

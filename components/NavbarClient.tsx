@@ -35,10 +35,6 @@ export default function NavbarClient() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    setIsMenuOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
     const syncAuthState = () => {
       setIsAuthenticated(getBrowserAuthState());
     };
@@ -64,7 +60,7 @@ export default function NavbarClient() {
         <div className="flex items-center gap-2 md:hidden">
           <button
             type="button"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-700 shadow-sm"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-gray-700"
             onClick={() => setIsMenuOpen((open) => !open)}
             aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
             aria-expanded={isMenuOpen}
@@ -80,12 +76,15 @@ export default function NavbarClient() {
               href={link.href}
               prefetch={false}
               className={`relative py-1 transition ${
-                pathname === link.href
-                  ? 'text-brand after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-brand'
-                  : 'text-gray-700 hover:text-brand'
+                pathname === link.href ? 'text-brand' : 'text-gray-700 hover:text-brand'
               }`}
             >
-              {link.name}
+              <span className="relative inline-block">
+                {link.name}
+                {pathname === link.href && (
+                  <span className="absolute inset-x-0 -bottom-1.5 h-0.5 bg-brand" />
+                )}
+              </span>
             </Link>
           ))}
           <Link href={authHref} prefetch={false}>
@@ -97,24 +96,30 @@ export default function NavbarClient() {
       </div>
 
       {isMenuOpen && (
-        <div className="border-t border-gray-100 bg-white/95 backdrop-blur-md md:hidden">
-          <div className="space-y-2 px-4 py-4">
+        <div className="absolute inset-x-0 top-full border-t border-white/60 bg-white/78 backdrop-blur-[36px] md:hidden">
+          <div className="space-y-2 border-b border-white/50 bg-white/72 px-4 py-4 shadow-[0_24px_80px_rgba(15,23,42,0.16)]">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 prefetch={false}
-                className={`block rounded-2xl px-4 py-3 text-base font-medium transition ${
+                onClick={() => setIsMenuOpen(false)}
+                className={`block rounded-2xl px-4 py-3 text-base font-medium backdrop-blur-md transition ${
                   pathname === link.href
-                    ? 'bg-brand/10 text-brand'
-                    : 'text-gray-700 hover:bg-gray-50'
+                    ? 'bg-white/80 text-brand'
+                    : 'text-gray-700 hover:bg-white/65'
                 }`}
               >
                 {link.name}
               </Link>
             ))}
-            <Link href={authHref} prefetch={false} className="block pt-2">
-              <span className="block w-full rounded-2xl bg-brand px-5 py-3 text-center text-base font-bold text-white shadow-md">
+            <Link
+              href={authHref}
+              prefetch={false}
+              onClick={() => setIsMenuOpen(false)}
+              className="block pt-2"
+            >
+              <span className="block w-full rounded-2xl bg-brand px-5 py-3 text-center text-base font-bold text-white shadow-[0_12px_32px_rgba(109,40,217,0.28)]">
                 {authLabel}
               </span>
             </Link>

@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase/browser';
+import { createClient, isBrowserSupabaseConfigured } from '@/lib/supabase/browser';
 
 interface AuthContextValue {
   supabase: SupabaseClient | null;
@@ -25,18 +25,30 @@ function isSupabaseLockAbort(error: unknown) {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const supabase = createClient();
+  const isConfigured = isBrowserSupabaseConfigured();
+  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const isConfigured = Boolean(supabase);
+  const [isLoading, setIsLoading] = useState(isConfigured);
 
   useEffect(() => {
-    if (!supabase) {
+    if (!isConfigured) {
+      setSupabase(null);
+      setSession(null);
       setIsLoading(false);
       return;
     }
 
-    const client = supabase;
+    const client = createClient();
+
+    if (!client) {
+      setSupabase(null);
+      setIsLoading(false);
+      return;
+    }
+
+    const supabaseClient = client;
+
+    setSupabase(supabaseClient);
 
     let isMounted = true;
 
@@ -44,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const {
           data: { session: nextSession },
-        } = await client.auth.getSession();
+        } = await supabaseClient.auth.getSession();
 
         if (isMounted) {
           setSession(nextSession ?? null);
@@ -64,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = client.auth.onAuthStateChange((_event: AuthChangeEvent, nextSession: Session | null) => {
+    } = supabaseClient.auth.onAuthStateChange((_event: AuthChangeEvent, nextSession: Session | null) => {
       if (!isMounted) {
         return;
       }
@@ -77,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, [isConfigured]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

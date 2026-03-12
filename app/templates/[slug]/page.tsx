@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactElement } from 'react';
+import { Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -139,6 +140,19 @@ export default async function TemplateDetailPage({ params }: TemplateDetailPageP
                   <StatCard key={fact.label} value={fact.value} label={fact.label} />
                 ))}
               </div>
+
+              <div className="mt-8 grid gap-5 xl:grid-cols-2">
+                <PreviewCard
+                  icon={<Box className="h-5 w-5" />}
+                  title="এই product-এ যা পাবেন"
+                  items={product.deliverables.slice(0, 4)}
+                />
+                <PreviewCard
+                  icon={<Sparkles className="h-5 w-5" />}
+                  title="যেভাবে কাজে লাগবে"
+                  items={product.useCases.slice(0, 4)}
+                />
+              </div>
             </div>
 
             <div className="rounded-[2rem] bg-white p-4 shadow-2xl ring-1 ring-gray-100 sm:p-6">
@@ -153,11 +167,13 @@ export default async function TemplateDetailPage({ params }: TemplateDetailPageP
                 />
               </div>
 
-              <PublicItemCheckoutPanel
-                item={{ type: 'shop', slug: product.slug }}
-                originalPrice={product.price}
-                highlights={product.featureMetrics}
-              />
+              <Suspense fallback={null}>
+                <PublicItemCheckoutPanel
+                  item={{ type: 'shop', slug: product.slug }}
+                  originalPrice={product.price}
+                  highlights={product.featureMetrics}
+                />
+              </Suspense>
             </div>
           </div>
         </div>
@@ -211,6 +227,36 @@ function StatCard({ value, label }: { value: string; label: string }) {
     <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
       <p className="text-xl font-bold text-gray-900">{value}</p>
       <p className="mt-2 text-sm text-gray-500">{label}</p>
+    </div>
+  );
+}
+
+function PreviewCard({
+  icon,
+  title,
+  items,
+}: {
+  icon: ReactElement;
+  title: string;
+  items: string[];
+}) {
+  return (
+    <div className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm">
+      <div className="flex items-center gap-3">
+        <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+          {icon}
+        </span>
+        <h2 className="text-lg font-bold text-gray-900">{title}</h2>
+      </div>
+
+      <div className="mt-5 space-y-3">
+        {items.map((item) => (
+          <div key={item} className="flex rounded-2xl bg-gray-50 p-4">
+            <BadgeCheck className="mr-3 mt-0.5 h-5 w-5 shrink-0 text-brand" />
+            <p className="text-sm leading-relaxed text-gray-600">{item}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

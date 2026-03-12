@@ -3,6 +3,7 @@ import { ArrowRight, HelpCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import PageHeader from '@/components/PageHeader';
+import FaqAccordion from '@/components/FaqAccordion';
 import { FAQ_ITEMS } from '@/lib/faq-data';
 
 export const revalidate = 86400;
@@ -40,22 +41,7 @@ export default function FaqPage() {
             </Link>
           </div>
 
-          <div className="space-y-4">
-            {FAQ_ITEMS.map((item, index) => (
-              <details
-                key={item.question}
-                className="group rounded-[1.75rem] border border-gray-100 bg-white p-5 shadow-sm transition open:border-brand/20 open:shadow-md sm:p-6"
-              >
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
-                  <span className="text-base font-bold text-gray-900 sm:text-lg">
-                    {index + 1}. {item.question}
-                  </span>
-                  <ArrowRight className="h-4 w-4 shrink-0 text-gray-400 transition group-open:rotate-90 group-open:text-brand" />
-                </summary>
-                <p className="pt-4 text-sm leading-relaxed text-gray-600 sm:text-base">{item.answer}</p>
-              </details>
-            ))}
-          </div>
+          <FaqAccordion items={FAQ_ITEMS} icon="arrow" numbered />
         </div>
       </section>
 

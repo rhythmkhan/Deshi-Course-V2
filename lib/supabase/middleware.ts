@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 const AUTH_PAGES = ['/signin', '/signup'];
-const PROTECTED_PAGES = ['/cart', '/dashboard', '/update-password'];
+const PROTECTED_PAGES = ['/cart', '/dashboard'];
 
 function matchesPath(pathname: string, routes: string[]) {
   return routes.some((route) => pathname === route || pathname.startsWith(`${route}/`));

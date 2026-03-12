@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { BadgeCheck, Coins, LoaderCircle, ShoppingBag } from 'lucide-react';
 import AddToCartButton from './AddToCartButton';
 import { useAuth } from './AuthProvider';
+import CheckoutCouponField from './CheckoutCouponField';
 import { getCartPricingPreview, resolveCartItems, type CartItemInput } from '@/lib/cart';
+import type { CouponPricingRule } from '@/lib/coupons';
 import { formatPrice } from '@/lib/referral';
 import { generateMetaEventId, trackMetaEvent } from '@/lib/meta-client';
 import { buildMetaContentType } from '@/lib/meta';
@@ -31,7 +33,9 @@ export default function PublicItemCheckoutPanel({
 }: PublicItemCheckoutPanelProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { supabase, user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const handledCouponRef = useRef('');
   const [pricingState, setPricingState] = useState<PricingState>({
     walletBalance: 0,
     welcomeDiscountUsesRemaining: 0,
@@ -40,6 +44,10 @@ export default function PublicItemCheckoutPanel({
   });
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
+  const [couponInput, setCouponInput] = useState('');
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [couponError, setCouponError] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponPricingRule | null>(null);
 
   const resolvedItem = resolveCartItems([item])[0];
   const pricingPreview = resolvedItem
@@ -47,8 +55,10 @@ export default function PublicItemCheckoutPanel({
         [resolvedItem],
         pricingState.walletBalance,
         pricingState.welcomeDiscountUsesRemaining,
+        appliedCoupon,
       )
     : null;
+  const couponFromUrl = searchParams.get('coupon') ?? searchParams.get('couponCode') ?? '';
 
   useEffect(() => {
     let isMounted = true;
@@ -104,6 +114,59 @@ export default function PublicItemCheckoutPanel({
     };
   }, [isAuthLoading, supabase, user]);
 
+  const applyCouponCode = useCallback(async (code: string) => {
+    setIsApplyingCoupon(true);
+    setCouponError('');
+
+    try {
+      const response = await fetch('/api/coupons/preview', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          items: [item],
+          couponCode: code,
+        }),
+      });
+
+      const data = (await response.json()) as { coupon?: CouponPricingRule; error?: string };
+
+      if (!response.ok || !data.coupon) {
+        setAppliedCoupon(null);
+        throw new Error(data.error || 'Coupon apply করা যায়নি।');
+      }
+
+      setAppliedCoupon(data.coupon);
+    } catch (error) {
+      setCouponError(error instanceof Error ? error.message : 'Coupon apply করা যায়নি।');
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  }, [item]);
+
+  useEffect(() => {
+    const normalizedCoupon = couponFromUrl.trim().toUpperCase();
+
+    if (!normalizedCoupon || handledCouponRef.current === normalizedCoupon) {
+      return;
+    }
+
+    handledCouponRef.current = normalizedCoupon;
+    setCouponInput(normalizedCoupon);
+    void applyCouponCode(normalizedCoupon);
+  }, [applyCouponCode, couponFromUrl]);
+
+  async function handleApplyCoupon() {
+    await applyCouponCode(couponInput.trim().toUpperCase());
+  }
+
+  function handleRemoveCoupon() {
+    setAppliedCoupon(null);
+    setCouponInput('');
+    setCouponError('');
+  }
+
   async function handleCheckout() {
     if (!resolvedItem || !pricingPreview) {
       return;
@@ -140,6 +203,7 @@ export default function PublicItemCheckoutPanel({
         },
         body: JSON.stringify({
           items: [item],
+          couponCode: appliedCoupon?.code,
           source: 'cart',
         }),
       });
@@ -189,6 +253,14 @@ export default function PublicItemCheckoutPanel({
           <span className="font-bold text-gray-900">৳ {formatPrice(resolvedItem.price)}</span>
         </div>
         <div className="mt-3 flex items-center justify-between text-sm">
+          <span className="text-gray-500">Coupon discount</span>
+          <span className="font-bold text-brand">
+            {pricingPreview.hasCouponDiscount
+              ? `- ৳ ${formatPrice(pricingPreview.couponDiscount)}`
+              : '৳ 0.00'}
+          </span>
+        </div>
+        <div className="mt-3 flex items-center justify-between text-sm">
           <span className="text-gray-500">Wallet discount</span>
           <span className="font-bold text-brand">
             {pricingPreview.hasWalletDiscount
@@ -205,6 +277,19 @@ export default function PublicItemCheckoutPanel({
             Details public, তবে payment-এর আগে sign in করতে হবে।
           </p>
         </div>
+      </div>
+
+      <div className="mb-5">
+        <CheckoutCouponField
+          code={couponInput}
+          onCodeChange={setCouponInput}
+          onApply={handleApplyCoupon}
+          onRemove={handleRemoveCoupon}
+          isApplying={isApplyingCoupon}
+          appliedCoupon={appliedCoupon}
+          error={couponError}
+          disabled={isCheckingOut}
+        />
       </div>
 
       <div className="space-y-3 text-sm text-gray-600">

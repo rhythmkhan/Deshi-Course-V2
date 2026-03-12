@@ -54,11 +54,14 @@ export default function Footer() {
       key={section.title}
       className={`rounded-3xl bg-white/80 px-5 py-5 text-left shadow-[0_14px_32px_-28px_rgba(109,40,217,0.28)] ${className}`.trim()}
     >
-      <p className="mb-4 text-base font-bold text-gray-900">{section.title}</p>
+      <h3 className="mb-4 text-base font-bold text-gray-900">{section.title}</h3>
       <ul className={`space-y-2.5 text-sm text-gray-700 ${listClassName}`.trim()}>
         {section.links.map((link) => (
           <li key={link.href}>
-            <Link href={link.href} className="inline-flex items-center gap-2 transition hover:text-brand">
+            <Link
+              href={link.href}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl py-1 pr-2 transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/25"
+            >
               <span className="h-1.5 w-1.5 rounded-full bg-brand/35" />
               <span>{link.label}</span>
             </Link>

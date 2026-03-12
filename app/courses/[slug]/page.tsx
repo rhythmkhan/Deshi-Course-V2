@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactElement } from 'react';
+import { Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -143,6 +144,14 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
                   <StatCard key={fact.label} value={fact.value} label={fact.label} />
                 ))}
               </div>
+
+              <div className="mt-8 hidden space-y-6 lg:block">
+                <SectionBlock title="কোর্স সম্পর্কে">
+                  <p className="text-base leading-relaxed text-gray-600">{course.description}</p>
+                </SectionBlock>
+
+                <SectionGrid title="এই কোর্সে যা পাবেন" items={course.deliverables} />
+              </div>
             </div>
 
             <div className="rounded-[2rem] bg-white p-4 shadow-2xl ring-1 ring-gray-100 sm:p-6">
@@ -157,7 +166,9 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
                 />
               </div>
 
-              <CoursePurchasePanel course={course} />
+              <Suspense fallback={null}>
+                <CoursePurchasePanel course={course} />
+              </Suspense>
             </div>
           </div>
         </div>
@@ -166,11 +177,19 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
       <section className="py-16 sm:py-20">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[1fr_320px] lg:px-20">
           <div className="space-y-10">
-            <SectionBlock title="কোর্স সম্পর্কে">
-              <p className="text-base leading-relaxed text-gray-600">{course.description}</p>
-            </SectionBlock>
+            <div className="lg:hidden">
+              <SectionBlock title="কোর্স সম্পর্কে">
+                <p className="text-base leading-relaxed text-gray-600">{course.description}</p>
+              </SectionBlock>
+            </div>
 
-            <SectionGrid title="এই কোর্সে যা পাবেন" items={course.deliverables} />
+            <div className="lg:hidden">
+              <SectionGrid title="এই কোর্সে যা পাবেন" items={course.deliverables} />
+            </div>
+
+            {course.modules && course.modules.length > 0 && (
+              <CourseModulesSection modules={course.modules} />
+            )}
 
             <div className="grid gap-6 lg:grid-cols-2">
               <SectionList title="যাদের জন্য এই কোর্স" items={course.audience} icon={<Users className="mr-3 mt-0.5 h-4 w-4 shrink-0 text-brand" />} />
@@ -294,6 +313,32 @@ function StepSection({ title, items }: { title: string; items: string[] }) {
           <div key={step} className="rounded-2xl border border-gray-100 p-5">
             <p className="text-sm font-bold text-brand">Step {index + 1}</p>
             <p className="mt-2 text-sm leading-relaxed text-gray-600 sm:text-base">{step}</p>
+          </div>
+        ))}
+      </div>
+    </SectionBlock>
+  );
+}
+
+function CourseModulesSection({
+  modules,
+}: {
+  modules: Array<{ title: string; lessons: string[] }>;
+}) {
+  return (
+    <SectionBlock title="কোর্স মডিউল">
+      <div className="space-y-5">
+        {modules.map((module) => (
+          <div key={module.title} className="rounded-[1.5rem] border border-gray-100 bg-gray-50 p-5 sm:p-6">
+            <h3 className="text-lg font-bold text-gray-900">{module.title}</h3>
+            <ul className="mt-4 space-y-3">
+              {module.lessons.map((lesson) => (
+                <li key={lesson} className="flex text-sm text-gray-600 sm:text-base">
+                  <BadgeCheck className="mr-3 mt-0.5 h-4 w-4 shrink-0 text-brand" />
+                  {lesson}
+                </li>
+              ))}
+            </ul>
           </div>
         ))}
       </div>

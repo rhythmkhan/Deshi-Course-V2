@@ -3,33 +3,36 @@ import Link from 'next/link';
 import { BLOG_POSTS } from '@/lib/blog-data';
 import { Calendar, ArrowRight } from 'lucide-react';
 
-export default function LatestBlog() {
-  const latestPosts = BLOG_POSTS.slice(0, 2);
+type LatestBlogProps = {
+  mobileLimit?: number;
+  desktopLimit?: number;
+};
+
+export default function LatestBlog({
+  mobileLimit = 2,
+  desktopLimit = 3,
+}: LatestBlogProps) {
+  const visiblePosts = BLOG_POSTS.slice(0, Math.max(mobileLimit, desktopLimit));
 
   return (
-    <section className="deferred-section bg-gray-50 py-16 sm:py-20 lg:py-24">
+    <section className="deferred-section py-16 sm:py-20 lg:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-20">
-        <div className="mb-10 flex flex-col gap-4 text-center sm:mb-12 md:flex-row md:items-end md:justify-between md:text-left">
+        <div className="mb-10 text-center sm:mb-12 md:text-left">
           <div className="max-w-2xl">
             <h2 className="mb-4 text-3xl font-bold text-gray-900 sm:text-4xl">আমাদের সর্বশেষ ব্লগ</h2>
             <p className="text-sm text-gray-700 sm:text-base">
               ক্যারিয়ার গাইডলাইন, স্কিল ডেভেলপমেন্ট এবং প্রযুক্তির দুনিয়ার সর্বশেষ খবরাখবর জানতে আমাদের ব্লগ পড়ুন।
             </p>
           </div>
-          <Link 
-            href="/blog" 
-            className="inline-flex items-center justify-center text-brand font-bold transition-all group hover:space-x-2 md:justify-start"
-          >
-            <span>সব ব্লগ দেখুন</span>
-            <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-          </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {latestPosts.map((post, index) => (
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          {visiblePosts.map((post, index) => (
             <article 
               key={post.id}
-              className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col"
+              className={`flex flex-col overflow-hidden rounded-[2rem] border border-gray-100 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
+                index >= mobileLimit ? 'hidden lg:flex' : ''
+              }`}
             >
               <Link href={`/blog/${post.slug}`} className="relative h-56 overflow-hidden">
                 <Image
@@ -72,6 +75,16 @@ export default function LatestBlog() {
               </div>
             </article>
           ))}
+        </div>
+
+        <div className="mt-8">
+          <Link
+            href="/blog"
+            className="group inline-flex w-full items-center justify-center rounded-2xl bg-brand px-6 py-4 text-base font-bold text-white transition-all hover:brightness-110"
+          >
+            <span>সব ব্লগ দেখুন</span>
+            <ArrowRight className="ml-2 h-5 w-5 shrink-0 transition-transform group-hover:translate-x-1" />
+          </Link>
         </div>
       </div>
     </section>

@@ -1,9 +1,8 @@
-const toBanglaNumber = (value: string | number) =>
-  String(value).replace(/\d/g, (digit) => '০১২৩৪৫৬৭৮৯'[Number(digit)]);
+import AnimatedCounter from './AnimatedCounter';
 
 export default function Stats() {
   const stats = [
-    { value: 15, suffix: 'কে+', label: 'শিক্ষার্থী' },
+    { value: 15000, suffix: '+', label: 'শিক্ষার্থী' },
     { value: 75, suffix: '%', label: 'সাফল্যের হার' },
     { value: 35, suffix: '', label: 'প্রধান প্রশ্নসমূহ' },
     { value: 26, suffix: '', label: 'বিশেষজ্ঞ শিক্ষক' },
@@ -22,8 +21,7 @@ export default function Stats() {
               }`}
             >
               <p className="text-3xl font-bold text-brand sm:text-4xl">
-                {toBanglaNumber(stat.value)}
-                {stat.suffix}
+                <AnimatedCounter value={stat.value} suffix={stat.suffix} />
               </p>
               <p className="mt-2 text-sm font-medium text-gray-600 sm:text-base">{stat.label}</p>
             </div>

@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, LoaderCircle, ShoppingBag, Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from './AuthProvider';
+import CheckoutCouponField from './CheckoutCouponField';
 import { useCart } from './CartProvider';
 import { formatPrice } from '@/lib/referral';
 import { getCartPricingPreview, resolveCartItems } from '@/lib/cart';
+import type { CouponPricingRule } from '@/lib/coupons';
 import { generateMetaEventId, trackMetaEvent } from '@/lib/meta-client';
 import { buildMetaContentType } from '@/lib/meta';
 
@@ -21,8 +23,9 @@ interface PricingState {
 
 export default function CartPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { supabase, user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
-  const { items, removeItem, clearCart, isReady } = useCart();
+  const { items, removeItem, clearCart, couponCode, setCouponCode, isReady } = useCart();
   const [pricingState, setPricingState] = useState<PricingState>({
     walletBalance: 0,
     welcomeDiscountUsesRemaining: 0,
@@ -31,12 +34,18 @@ export default function CartPageContent() {
   });
   const [checkoutError, setCheckoutError] = useState('');
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [couponError, setCouponError] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponPricingRule | null>(null);
+  const [couponInput, setCouponInput] = useState(couponCode);
+  const couponFromUrl = searchParams.get('coupon') ?? searchParams.get('couponCode') ?? '';
 
   const cartItems = resolveCartItems(items);
   const pricingPreview = getCartPricingPreview(
     cartItems,
     pricingState.walletBalance,
     pricingState.welcomeDiscountUsesRemaining,
+    appliedCoupon,
   );
   const pricedCartItems = pricingPreview.pricedItems;
 
@@ -94,6 +103,94 @@ export default function CartPageContent() {
     };
   }, [isAuthLoading, supabase, user]);
 
+  useEffect(() => {
+    setCouponInput(couponCode);
+  }, [couponCode]);
+
+  useEffect(() => {
+    const normalizedCoupon = couponFromUrl.trim().toUpperCase();
+
+    if (!normalizedCoupon || normalizedCoupon === couponCode) {
+      return;
+    }
+
+    setCouponInput(normalizedCoupon);
+    setCouponCode(normalizedCoupon);
+  }, [couponCode, couponFromUrl, setCouponCode]);
+
+  const previewCoupon = useCallback(async (codeToApply: string) => {
+    if (!codeToApply.trim()) {
+      setAppliedCoupon(null);
+      setCouponError('');
+      return false;
+    }
+
+    if (!items.length) {
+      setAppliedCoupon(null);
+      return false;
+    }
+
+    setIsApplyingCoupon(true);
+
+    try {
+      const response = await fetch('/api/coupons/preview', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          couponCode: codeToApply,
+          items: items.map((item) => ({ type: item.type, slug: item.slug })),
+        }),
+      });
+
+      const data = (await response.json()) as { coupon?: CouponPricingRule; error?: string };
+
+      if (!response.ok || !data.coupon) {
+        setAppliedCoupon(null);
+        setCouponError(data.error || 'Coupon apply করা যায়নি।');
+        return false;
+      }
+
+      setAppliedCoupon(data.coupon);
+      setCouponError('');
+      return true;
+    } catch (error) {
+      setAppliedCoupon(null);
+      setCouponError(error instanceof Error ? error.message : 'Coupon apply করা যায়নি।');
+      return false;
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  }, [items]);
+
+  useEffect(() => {
+    void previewCoupon(couponCode);
+  }, [
+    couponCode,
+    items,
+    previewCoupon,
+    pricingState.isAuthenticated,
+    pricingState.walletBalance,
+    pricingState.welcomeDiscountUsesRemaining,
+  ]);
+
+  async function handleApplyCoupon() {
+    const nextCode = couponInput.trim().toUpperCase();
+    setCouponCode(nextCode);
+
+    if (nextCode === couponCode) {
+      await previewCoupon(nextCode);
+    }
+  }
+
+  function handleRemoveCoupon() {
+    setAppliedCoupon(null);
+    setCouponError('');
+    setCouponInput('');
+    setCouponCode('');
+  }
+
   async function handleCheckout() {
     if (!cartItems.length) {
       return;
@@ -134,6 +231,7 @@ export default function CartPageContent() {
         },
         body: JSON.stringify({
           items: items.map((item) => ({ type: item.type, slug: item.slug })),
+          couponCode: appliedCoupon?.code,
           source: 'cart',
         }),
       });
@@ -327,6 +425,14 @@ export default function CartPageContent() {
               </span>
             </div>
             <div className="flex items-center justify-between">
+              <span className="text-gray-500">Coupon discount</span>
+              <span className="font-bold text-brand">
+                {pricingPreview.hasCouponDiscount
+                  ? `- ৳ ${formatPrice(pricingPreview.couponDiscount)}`
+                  : '৳ 0.00'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
               <span className="text-gray-500">Wallet deduction</span>
               <span className="font-bold text-brand">
                 {pricingPreview.hasWalletDiscount
@@ -336,13 +442,26 @@ export default function CartPageContent() {
             </div>
           </div>
 
+          <div className="mt-6">
+            <CheckoutCouponField
+              code={couponInput}
+              onCodeChange={setCouponInput}
+              onApply={handleApplyCoupon}
+              onRemove={handleRemoveCoupon}
+              isApplying={isApplyingCoupon}
+              appliedCoupon={appliedCoupon}
+              error={couponError}
+              disabled={isCheckingOut}
+            />
+          </div>
+
           <div className="mt-6 rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold text-gray-900">Final payable</span>
               <span className="text-2xl font-bold text-gray-900">৳ {formatPrice(pricingPreview.finalPrice)}</span>
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              কার্টে course থাকলে referral discount auto-apply হবে, আর wallet balance থাকলে final payable থেকে কেটে যাবে।
+              কার্টে course থাকলে referral discount auto-apply হবে, coupon valid হলে server-এ verify হবে, আর wallet balance থাকলে final payable থেকে কেটে যাবে।
             </p>
           </div>
 

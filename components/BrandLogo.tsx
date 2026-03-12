@@ -12,7 +12,7 @@ type BrandLogoProps = {
 const sizeClasses = {
   sm: {
     wrapper: 'h-9 w-9',
-    text: 'text-lg sm:text-xl',
+    text: 'text-xl sm:text-2xl',
   },
   md: {
     wrapper: 'h-11 w-11',

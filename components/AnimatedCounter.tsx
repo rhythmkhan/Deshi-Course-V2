@@ -4,6 +4,14 @@ import { useEffect, useRef, useState } from 'react';
 
 const bengaliDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
 
+const easeOutExpo = (progress: number) => {
+  if (progress >= 1) {
+    return 1;
+  }
+
+  return 1 - 2 ** (-10 * progress);
+};
+
 const toBengaliNumber = (num: string | number) => {
   return num
     .toString()
@@ -61,11 +69,16 @@ export default function AnimatedCounter({
 
       const step = (timestamp: number) => {
         const progress = Math.min((timestamp - start) / (duration * 1000), 1);
-        setCount(value * progress);
+        const easedProgress = easeOutExpo(progress);
+
+        setCount(value * easedProgress);
 
         if (progress < 1) {
           frameIdRef.current = window.requestAnimationFrame(step);
+          return;
         }
+
+        setCount(value);
       };
 
       frameIdRef.current = window.requestAnimationFrame(step);
@@ -102,7 +115,10 @@ export default function AnimatedCounter({
     };
   }, [duration, value]);
 
-  const displayValue = count.toFixed(decimals);
+  const displayValue = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(count);
 
   return (
     <span ref={ref} className={className}>

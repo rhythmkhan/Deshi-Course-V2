@@ -59,3 +59,29 @@ export function isLocalTrackingUrl(url: string) {
     return false;
   }
 }
+
+function parseBooleanFlag(value?: string | null) {
+  if (!value) {
+    return false;
+  }
+
+  switch (value.trim().toLowerCase()) {
+    case '1':
+    case 'true':
+    case 'yes':
+    case 'on':
+      return true;
+    default:
+      return false;
+  }
+}
+
+export function isMetaLocalTrackingEnabled() {
+  return parseBooleanFlag(
+    process.env.NEXT_PUBLIC_META_TRACK_LOCALHOST ?? process.env.META_TRACK_LOCALHOST,
+  );
+}
+
+export function shouldSkipMetaTrackingUrl(url: string) {
+  return isLocalTrackingUrl(url) && !isMetaLocalTrackingEnabled();
+}

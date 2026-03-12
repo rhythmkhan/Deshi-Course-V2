@@ -1,6 +1,6 @@
 import type {Metadata} from 'next';
-import AuthCodeRedirect from '@/components/AuthCodeRedirect';
 import GoogleTagManager from '@/components/GoogleTagManager';
+import LayoutClientExtras from '@/components/LayoutClientExtras';
 import MetaPixel from '@/components/MetaPixel';
 import StructuredData from '@/components/StructuredData';
 import { Hind_Siliguri } from 'next/font/google';
@@ -15,7 +15,7 @@ import './globals.css';
 
 const hindSiliguri = Hind_Siliguri({
   subsets: ['latin', 'bengali'],
-  weight: ['300', '400', '500', '600', '700'],
+  weight: ['400', '600', '700'],
   variable: '--font-bengali',
 });
 
@@ -55,7 +55,7 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
     <html lang="bn" className={hindSiliguri.variable}>
       <body suppressHydrationWarning className="font-bengali antialiased">
-        <AuthCodeRedirect />
+        <LayoutClientExtras />
         <GoogleTagManager />
         <StructuredData data={buildOrganizationSchema()} />
         <StructuredData data={buildWebsiteSchema()} />

@@ -214,8 +214,8 @@ export async function appendSuccessfulOrderRow(
   try {
     const accessToken = await getAccessToken();
     const endpoint = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(
-      `${SHEET_NAME}!A1:append`,
-    )}?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+      `${SHEET_NAME}!A1`,
+    )}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {

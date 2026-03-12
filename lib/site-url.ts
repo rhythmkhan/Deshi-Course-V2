@@ -24,6 +24,26 @@ function normalizeSiteUrl(value?: string | null) {
   }
 }
 
+function getDefaultProtocolForHost(host: string) {
+  const normalizedHost = host.trim().toLowerCase();
+
+  if (
+    normalizedHost.startsWith('localhost') ||
+    normalizedHost.startsWith('127.0.0.1') ||
+    normalizedHost.startsWith('[::1]') ||
+    normalizedHost.endsWith('.local')
+  ) {
+    return 'http';
+  }
+
+  return 'https';
+}
+
+function buildOriginFromHost(host: string, protocol?: string | null) {
+  const safeProtocol = protocol || getDefaultProtocolForHost(host);
+  return normalizeSiteUrl(`${safeProtocol}://${host}`);
+}
+
 function getEnvSiteUrl() {
   return (
     normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL) ||
@@ -44,19 +64,26 @@ export function getRequestSiteUrl({
   request?: Request;
   headers?: HeaderReader;
 } = {}) {
+  const requestOrigin = request ? normalizeSiteUrl(new URL(request.url).origin) : null;
   const forwardedHost = headers?.get('x-forwarded-host');
   const forwardedProto = headers?.get('x-forwarded-proto');
 
   if (forwardedHost) {
-    return normalizeSiteUrl(`${forwardedProto || 'https'}://${forwardedHost}`) || SITE_URL;
+    return buildOriginFromHost(
+      forwardedHost,
+      forwardedProto || (requestOrigin ? new URL(requestOrigin).protocol.replace(':', '') : null),
+    ) || SITE_URL;
   }
 
   if (headers?.get('host')) {
-    return normalizeSiteUrl(`https://${headers.get('host')}`) || SITE_URL;
+    return buildOriginFromHost(
+      headers.get('host') as string,
+      requestOrigin ? new URL(requestOrigin).protocol.replace(':', '') : null,
+    ) || requestOrigin || SITE_URL;
   }
 
-  if (request) {
-    return normalizeSiteUrl(new URL(request.url).origin) || SITE_URL;
+  if (requestOrigin) {
+    return requestOrigin;
   }
 
   return SITE_URL;

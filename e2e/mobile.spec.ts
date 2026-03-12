@@ -18,6 +18,13 @@ async function expectStacked(first: Locator, second: Locator) {
   expect(secondBox!.y).toBeGreaterThan(firstBox!.y + 4);
 }
 
+async function expectRedirectToSignIn(page: Page, redirectPath: string) {
+  await page.waitForURL((url) => {
+    const redirect = url.searchParams.get('redirect');
+    return url.pathname === '/signin' && redirect === redirectPath;
+  });
+}
+
 test('home page is mobile friendly', async ({ page }) => {
   await page.goto('/');
 
@@ -53,6 +60,29 @@ test('course detail page stacks purchase actions on mobile', async ({ page }) =>
   await expectStacked(addToCartButton, referCenterLink);
 
   await expectNoHorizontalOverflow(page);
+});
+
+test('course checkout redirects unauthenticated users to signin with redirect target', async ({ page }) => {
+  await page.goto('/courses/n8n-automation-mastery');
+
+  await page.getByRole('button', { name: 'Pay করার আগে sign in করুন' }).click();
+  await expectRedirectToSignIn(page, '/courses/n8n-automation-mastery');
+});
+
+test('bundle checkout redirects unauthenticated users to signin with redirect target', async ({ page }) => {
+  await page.goto('/bundles/ai-career-duo-bundle');
+
+  await expect(page.getByRole('heading', { name: 'AI Career Duo Bundle' })).toBeVisible();
+  await page.getByRole('button', { name: 'Pay করার আগে sign in করুন' }).click();
+  await expectRedirectToSignIn(page, '/bundles/ai-career-duo-bundle');
+});
+
+test('template checkout redirects unauthenticated users to signin with redirect target', async ({ page }) => {
+  await page.goto('/templates/lovable');
+
+  await expect(page.getByRole('heading', { name: 'Lovable' })).toBeVisible();
+  await page.getByRole('button', { name: 'Pay করার আগে sign in করুন' }).click();
+  await expectRedirectToSignIn(page, '/templates/lovable');
 });
 
 test('blog detail page keeps the subscription form mobile friendly', async ({ page }) => {

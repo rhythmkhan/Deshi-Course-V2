@@ -39,7 +39,7 @@ export default function ProductShowcase({
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3 md:gap-8">
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3 lg:gap-8">
           {visibleItems.map((item, index) => {
             const hideOnDesktop =
               typeof mobileLimit === 'number' &&
@@ -51,7 +51,7 @@ export default function ProductShowcase({
             return (
             <article
               key={item.id}
-              className={`flex min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl ${hideOnDesktop ? 'md:hidden' : ''}`}
+              className={`flex min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl ${hideOnDesktop ? 'lg:hidden' : ''}`}
             >
               <div className="relative h-28 overflow-hidden sm:h-48">
                 <Image

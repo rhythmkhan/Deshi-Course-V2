@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactElement } from 'react';
+import { Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -145,15 +146,18 @@ export default async function BundleDetailPage({ params }: BundleDetailPageProps
                   alt={bundle.title}
                   fill
                   className="object-cover"
+                  unoptimized={bundle.image.startsWith('/api/catalog-art')}
                   priority
                 />
               </div>
 
-              <PublicItemCheckoutPanel
-                item={{ type: 'bundle', slug: bundle.slug }}
-                originalPrice={bundle.originalPrice}
-                highlights={bundle.featureMetrics}
-              />
+              <Suspense fallback={null}>
+                <PublicItemCheckoutPanel
+                  item={{ type: 'bundle', slug: bundle.slug }}
+                  originalPrice={bundle.originalPrice}
+                  highlights={bundle.featureMetrics}
+                />
+              </Suspense>
             </div>
           </div>
         </div>

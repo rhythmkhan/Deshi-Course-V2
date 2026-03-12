@@ -23,6 +23,17 @@ interface TrendBlogSeed {
   tags: string[];
 }
 
+const TRENDING_EDITORIAL_IMAGES = Array.from(
+  { length: 58 },
+  (_, index) => `/images/blog/editorial-${String(index + 1).padStart(2, '0')}.webp`,
+);
+
+const LEGACY_EDITORIAL_IMAGES = [
+  '/images/blog/editorial-56.webp',
+  '/images/blog/editorial-49.webp',
+  '/images/blog/editorial-07.webp',
+];
+
 const renderList = (items: string[], ordered = false) => {
   const tag = ordered ? 'ol' : 'ul';
   return `<${tag}>${items.map((item) => `<li>${item}</li>`).join('')}</${tag}>`;
@@ -847,7 +858,7 @@ const LEGACY_POSTS: BlogPost[] = [
     content: "<h2>ফ্রিল্যান্সিং কী এবং কেন করবেন?</h2><p>ফ্রিল্যান্সিং মানে হলো কোনো নির্দিষ্ট প্রতিষ্ঠানের অধীনে না থেকে স্বাধীনভাবে কাজ করা।</p><h2>সঠিক স্কিল নির্বাচন</h2><p>ওয়েব ডেভেলপমেন্ট, গ্রাফিক ডিজাইন, ডিজিটাল মার্কেটিং এবং কনটেন্ট রাইটিং জনপ্রিয় ক্ষেত্র।</p><h2>কোথায় কাজ খুঁজবেন?</h2><p>আপওয়ার্ক, ফিভার এবং ফ্রিল্যান্সার ডট কমে ভালো পোর্টফোলিও নিয়ে শুরু করতে পারেন।</p>",
     author: "দেশি কোর্স টিম",
     date: "৮ মার্চ, ২০২৪",
-    image: "https://picsum.photos/seed/freelance/800/600",
+    image: "/images/blog/editorial-56.webp",
     category: "ফ্রিল্যান্সিং",
     tags: [
       "Freelancing",
@@ -863,7 +874,7 @@ const LEGACY_POSTS: BlogPost[] = [
     content: "<h2>কেন প্রোগ্রামিং শিখবেন?</h2><p>প্রযুক্তির সাথে তাল মিলিয়ে চলতে প্রোগ্রামিং শেখার বিকল্প নেই।</p><h2>সেরা ৫টি ল্যাঙ্গুয়েজ</h2><ol><li>পাইথন</li><li>জাভাস্ক্রিপ্ট</li><li>জাভা</li><li>টাইপস্ক্রিপ্ট</li><li>গো</li></ol><h2>কীভাবে শুরু করবেন?</h2><p>একটি ল্যাঙ্গুয়েজ বেছে নিয়ে নিয়মিত প্র্যাকটিস করুন।</p>",
     author: "দেশি কোর্স টিম",
     date: "৫ মার্চ, ২০২৪",
-    image: "https://picsum.photos/seed/code/800/600",
+    image: "/images/blog/editorial-49.webp",
     category: "প্রোগ্রামিং",
     tags: [
       "Programming",
@@ -879,7 +890,7 @@ const LEGACY_POSTS: BlogPost[] = [
     content: "<h2>ইউআই এবং ইউএক্স কী?</h2><p>ইউআই হলো ইউজার ইন্টারফেস, আর ইউএক্স হলো ইউজার এক্সপেরিয়েন্স।</p><h2>ব্যবসায় এর প্রভাব</h2><p>ভালো ডিজাইন গ্রাহকের আস্থা বাড়ায় এবং কনভার্সন রেট বৃদ্ধি করে।</p><h2>ডিজাইন শেখার ধাপ</h2><p>ডিজাইন সেন্স, টুলস এবং কেস স্টাডি - এই তিনটি বিষয়ে জোর দিন।</p>",
     author: "দেশি কোর্স টিম",
     date: "১ মার্চ, ২০২৪",
-    image: "https://picsum.photos/seed/design/800/600",
+    image: "/images/blog/editorial-07.webp",
     category: "ডিজাইন",
     tags: [
       "UI/UX",
@@ -891,18 +902,21 @@ const LEGACY_POSTS: BlogPost[] = [
 
 const BASE_BLOG_POSTS: Omit<BlogPost, 'id'>[] = [
   ...PROMOTIONAL_BLOG_POSTS,
-  ...TRENDING_POSTS.map((post) => ({
+  ...TRENDING_POSTS.map((post, index) => ({
     slug: post.slug,
     title: post.title,
     excerpt: post.excerpt,
     content: createTrendContent(post),
     author: 'দেশি কোর্স রিসার্চ ডেস্ক',
     date: post.date,
-    image: `https://picsum.photos/seed/${post.imageSeed}/1200/800`,
+    image: TRENDING_EDITORIAL_IMAGES[index] ?? TRENDING_EDITORIAL_IMAGES[0],
     category: post.category,
     tags: post.tags,
   })),
-  ...LEGACY_POSTS.map(({ id: _id, ...post }) => post),
+  ...LEGACY_POSTS.map(({ id: _id, ...post }, index) => ({
+    ...post,
+    image: LEGACY_EDITORIAL_IMAGES[index] ?? LEGACY_EDITORIAL_IMAGES[0],
+  })),
 ];
 
 export const BLOG_POSTS: BlogPost[] = BASE_BLOG_POSTS.map((post, index) => ({

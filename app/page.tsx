@@ -58,7 +58,7 @@ export default function Home() {
         name: product.title,
         path: `/templates/${product.slug}`,
       })),
-      ...BLOG_POSTS.slice(0, 2).map((post) => ({
+      ...BLOG_POSTS.slice(0, 3).map((post) => ({
         name: post.title,
         path: `/blog/${post.slug}`,
       })),
@@ -76,12 +76,12 @@ export default function Home() {
       <Stats />
       <Features />
       <Categories />
-      <FeaturedCourses mobileLimit={3} desktopLimit={2} />
-      <Infographic mobileLimit={3} desktopLimit={2} />
-      <ProductShowcase mobileLimit={3} desktopLimit={2} />
+      <FeaturedCourses mobileLimit={4} desktopLimit={3} />
+      <Infographic mobileLimit={4} desktopLimit={3} />
+      <ProductShowcase mobileLimit={4} desktopLimit={3} />
       <Testimonials />
       <Support />
-      <LatestBlog />
+      <LatestBlog mobileLimit={2} desktopLimit={3} />
       <CTA />
       <Footer />
     </main>

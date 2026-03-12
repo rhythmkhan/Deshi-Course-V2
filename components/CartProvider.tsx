@@ -6,9 +6,11 @@ import { buildCartKey, createCartItem, type CartItem, type CartItemInput } from 
 interface CartContextValue {
   items: CartItem[];
   itemCount: number;
+  couponCode: string;
   isReady: boolean;
   addItem: (item: CartItemInput) => boolean;
   removeItem: (item: CartItemInput) => void;
+  setCouponCode: (couponCode: string) => void;
   clearCart: () => void;
   hasItem: (item: CartItemInput) => boolean;
 }
@@ -16,8 +18,14 @@ interface CartContextValue {
 const CART_STORAGE_KEY = 'deshicourse.cart.v1';
 const CartContext = createContext<CartContextValue | null>(null);
 
+interface StoredCartState {
+  items: CartItem[];
+  couponCode?: string;
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [couponCode, setCouponCode] = useState('');
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -29,10 +37,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const parsedValue = JSON.parse(storedValue) as CartItem[];
+      const parsedValue = JSON.parse(storedValue) as CartItem[] | StoredCartState;
 
       if (Array.isArray(parsedValue)) {
         setItems(parsedValue);
+      } else if (parsedValue && Array.isArray(parsedValue.items)) {
+        setItems(parsedValue.items);
+        setCouponCode(
+          typeof parsedValue.couponCode === 'string' ? parsedValue.couponCode : '',
+        );
       }
     } catch {
       window.localStorage.removeItem(CART_STORAGE_KEY);
@@ -46,8 +59,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
-  }, [isReady, items]);
+    window.localStorage.setItem(
+      CART_STORAGE_KEY,
+      JSON.stringify({
+        items,
+        couponCode,
+      } satisfies StoredCartState),
+    );
+  }, [couponCode, isReady, items]);
 
   function addItem(item: CartItemInput) {
     const key = buildCartKey(item.type, item.slug);
@@ -70,6 +89,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   function clearCart() {
     setItems([]);
+    setCouponCode('');
   }
 
   function hasItem(item: CartItemInput) {
@@ -82,9 +102,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       value={{
         items,
         itemCount: items.length,
+        couponCode,
         isReady,
         addItem,
         removeItem,
+        setCouponCode,
         clearCart,
         hasItem,
       }}

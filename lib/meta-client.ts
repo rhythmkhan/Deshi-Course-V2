@@ -1,6 +1,11 @@
 'use client';
 
-import { META_STANDARD_EVENTS, type MetaCustomData, type MetaEventName, isLocalTrackingUrl } from '@/lib/meta';
+import {
+  META_STANDARD_EVENTS,
+  type MetaCustomData,
+  type MetaEventName,
+  shouldSkipMetaTrackingUrl,
+} from '@/lib/meta';
 
 declare global {
   interface Window {
@@ -39,11 +44,11 @@ export function trackMetaEvent({
   const resolvedUrl =
     eventSourceUrl || (typeof window !== 'undefined' ? window.location.href : '');
 
-  if (!resolvedUrl || isLocalTrackingUrl(resolvedUrl)) {
+  if (!resolvedUrl || shouldSkipMetaTrackingUrl(resolvedUrl)) {
     return eventId;
   }
 
-  if (sendBrowser && META_PIXEL_ID && typeof window !== 'undefined') {
+  if (sendBrowser && typeof window !== 'undefined' && (META_PIXEL_ID || typeof window.fbq === 'function')) {
     const command = META_STANDARD_EVENTS.has(eventName) ? 'track' : 'trackCustom';
     const eventArgs: [string, string, MetaCustomData, { eventID: string }] = [
       command,

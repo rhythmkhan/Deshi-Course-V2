@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { isLocalTrackingUrl, type MetaCustomData, type MetaEventName } from '@/lib/meta';
+import { shouldSkipMetaTrackingUrl, type MetaCustomData, type MetaEventName } from '@/lib/meta';
 
 const META_GRAPH_API_VERSION = process.env.META_GRAPH_API_VERSION ?? 'v22.0';
 const META_TIMEOUT_MS = 8000;
@@ -126,7 +126,7 @@ export async function sendMetaConversionEvent({
   const pixelId = getPixelId();
   const accessToken = getAccessToken();
 
-  if (!pixelId || !accessToken || !eventSourceUrl || isLocalTrackingUrl(eventSourceUrl)) {
+  if (!pixelId || !accessToken || !eventSourceUrl || shouldSkipMetaTrackingUrl(eventSourceUrl)) {
     return { ok: false, skipped: true } as const;
   }
 

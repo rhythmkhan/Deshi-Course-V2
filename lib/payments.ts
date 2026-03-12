@@ -1,5 +1,10 @@
 import { getBundleBySlug } from '@/lib/bundle-catalog';
 import { getCartPricingPreview, resolveCartItems, type CartCatalogItem, type CartItemInput } from '@/lib/cart';
+import {
+  redeemCouponForOrder,
+  resolveCouponForCheckout,
+  type CouponPricingRule,
+} from '@/lib/coupons';
 import { getCourseCardBySlug } from '@/lib/course-details';
 import { sendOrderConfirmationEmails } from '@/lib/email';
 import { appendSuccessfulOrderRow } from '@/lib/google-sheets';
@@ -34,6 +39,8 @@ interface OrderRow {
   currency?: string | null;
   wallet_discount_amount?: number | string | null;
   referral_discount_amount?: number | string | null;
+  coupon_code?: string | null;
+  coupon_discount_amount?: number | string | null;
   provider_invoice_id?: string | null;
   provider_val_id?: string | null;
   provider_transaction_id?: string | null;
@@ -323,7 +330,72 @@ async function getAuthenticatedUserWithProfile() {
   };
 }
 
-export async function createPendingOrder(courseSlug: string) {
+async function getCheckoutCoupon(params: {
+  couponCode?: string;
+  items: Array<{ type: 'course' | 'bundle' | 'shop'; slug: string; effectivePrice: number }>;
+  referralDiscount: number;
+  userId: string;
+}) {
+  if (!params.couponCode) {
+    return null;
+  }
+
+  const couponResult = await resolveCouponForCheckout({
+    code: params.couponCode,
+    pricedItems: params.items,
+    referralDiscount: params.referralDiscount,
+    userId: params.userId,
+  });
+
+  if (!couponResult.coupon) {
+    throw new Error(couponResult.error || 'Coupon apply করা যায়নি।');
+  }
+
+  return couponResult.coupon;
+}
+
+async function redeemSingleUseCouponForOrder(params: {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  orderId: string;
+  coupon: CouponPricingRule | null;
+}) {
+  if (!params.coupon?.singleUse) {
+    return;
+  }
+
+  try {
+    await redeemCouponForOrder({
+      code: params.coupon.code,
+      orderId: params.orderId,
+    });
+  } catch (error) {
+    await params.supabase.from('orders').delete().eq('id', params.orderId);
+    throw new Error(error instanceof Error ? error.message : 'Coupon redeem failed');
+  }
+}
+
+function buildCouponSnapshot(coupon: CouponPricingRule | null, couponDiscount: number) {
+  if (!coupon || couponDiscount <= 0) {
+    return null;
+  }
+
+  return {
+    code: coupon.code,
+    description: coupon.description,
+    discountType: coupon.discountType,
+    discountValue: coupon.discountValue,
+    appliesTo: coupon.appliesTo,
+    singleUse: coupon.singleUse,
+    targetItemType: coupon.targetItemType,
+    targetSlug: coupon.targetSlug,
+    productSource: coupon.productSource,
+    expiresAt: coupon.expiresAt,
+    maxDiscountAmount: coupon.maxDiscountAmount,
+    discountAmount: couponDiscount,
+  };
+}
+
+export async function createPendingOrder(courseSlug: string, couponCode?: string) {
   const { supabase, user, profile } = await getAuthenticatedUserWithProfile();
 
   const course = getCourseCardBySlug(courseSlug);
@@ -332,10 +404,22 @@ export async function createPendingOrder(courseSlug: string) {
     throw new Error('Course not found');
   }
 
+  const basePricing = getPricingPreview(
+    course.price,
+    Number(profile?.wallet_balance ?? 0),
+    Number(profile?.welcome_discount_uses_remaining ?? 0),
+  );
+  const coupon = await getCheckoutCoupon({
+    couponCode,
+    items: [{ type: 'course', slug: course.slug, effectivePrice: course.price }],
+    referralDiscount: basePricing.referralDiscount,
+    userId: user.id,
+  });
   const pricing = getPricingPreview(
     course.price,
     Number(profile?.wallet_balance ?? 0),
     Number(profile?.welcome_discount_uses_remaining ?? 0),
+    coupon,
   );
 
   const orderId = crypto.randomUUID();
@@ -346,6 +430,9 @@ export async function createPendingOrder(courseSlug: string) {
     amount: pricing.finalPrice,
     original_amount: pricing.listPrice,
     referral_discount_amount: pricing.referralDiscount,
+    coupon_code: pricing.appliedCoupon?.code ?? null,
+    coupon_discount_amount: pricing.couponDiscount,
+    coupon_snapshot: buildCouponSnapshot(coupon, pricing.couponDiscount),
     wallet_discount_amount: pricing.walletDiscount,
     final_amount: pricing.finalPrice,
     currency: 'BDT',
@@ -354,12 +441,19 @@ export async function createPendingOrder(courseSlug: string) {
     metadata: {
       checkoutSource: 'course',
       purchasedItems: [`course:${course.slug}`],
+      coupon: buildCouponSnapshot(coupon, pricing.couponDiscount),
     },
   });
 
   if (error) {
     throw new Error('Could not create order');
   }
+
+  await redeemSingleUseCouponForOrder({
+    supabase,
+    orderId,
+    coupon,
+  });
 
   return {
     orderId,
@@ -375,7 +469,7 @@ function buildCartOrderSlug(items: CartCatalogItem[]) {
   return encodeCartOrderItems(items);
 }
 
-export async function createPendingCartOrder(items: CartItemInput[]) {
+export async function createPendingCartOrder(items: CartItemInput[], couponCode?: string) {
   const { supabase, user, profile } = await getAuthenticatedUserWithProfile();
 
   const checkoutItems = resolveCartItems(items);
@@ -384,10 +478,26 @@ export async function createPendingCartOrder(items: CartItemInput[]) {
     throw new Error('কার্টে valid item পাওয়া যায়নি।');
   }
 
+  const basePricing = getCartPricingPreview(
+    checkoutItems,
+    Number(profile?.wallet_balance ?? 0),
+    Number(profile?.welcome_discount_uses_remaining ?? 0),
+  );
+  const coupon = await getCheckoutCoupon({
+    couponCode,
+    items: basePricing.pricedItems.map((item) => ({
+      type: item.type,
+      slug: item.slug,
+      effectivePrice: item.effectivePrice,
+    })),
+    referralDiscount: basePricing.referralDiscount,
+    userId: user.id,
+  });
   const pricing = getCartPricingPreview(
     checkoutItems,
     Number(profile?.wallet_balance ?? 0),
     Number(profile?.welcome_discount_uses_remaining ?? 0),
+    coupon,
   );
 
   const orderId = crypto.randomUUID();
@@ -398,6 +508,9 @@ export async function createPendingCartOrder(items: CartItemInput[]) {
     amount: pricing.finalPrice,
     original_amount: pricing.originalSubtotal,
     referral_discount_amount: pricing.referralDiscount,
+    coupon_code: pricing.appliedCoupon?.code ?? null,
+    coupon_discount_amount: pricing.couponDiscount,
+    coupon_snapshot: buildCouponSnapshot(coupon, pricing.couponDiscount),
     wallet_discount_amount: pricing.walletDiscount,
     final_amount: pricing.finalPrice,
     currency: 'BDT',
@@ -406,6 +519,7 @@ export async function createPendingCartOrder(items: CartItemInput[]) {
     metadata: {
       checkoutSource: 'cart',
       purchasedItems: checkoutItems.map((item) => `${item.type}:${item.slug}`),
+      coupon: buildCouponSnapshot(coupon, pricing.couponDiscount),
     },
   });
 
@@ -429,6 +543,12 @@ export async function createPendingCartOrder(items: CartItemInput[]) {
     await supabase.from('orders').delete().eq('id', orderId);
     throw new Error('Could not create cart order items');
   }
+
+  await redeemSingleUseCouponForOrder({
+    supabase,
+    orderId,
+    coupon,
+  });
 
   return {
     orderId,
