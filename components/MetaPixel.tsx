@@ -72,13 +72,10 @@ export default function MetaPixel() {
 
               window.removeEventListener('pointerdown', bootPixel);
               window.removeEventListener('keydown', bootPixel);
-              window.removeEventListener('scroll', bootPixel);
             };
 
             window.addEventListener('pointerdown', bootPixel, { once: true, passive: true });
             window.addEventListener('keydown', bootPixel, { once: true });
-            window.addEventListener('scroll', bootPixel, { once: true, passive: true });
-            window.setTimeout(bootPixel, 6000);
           })();
         `}
       </Script>

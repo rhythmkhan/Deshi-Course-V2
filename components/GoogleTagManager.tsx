@@ -38,8 +38,6 @@ export default function GoogleTagManager() {
 
             window.addEventListener('pointerdown', loadGtm, { once: true, passive: true });
             window.addEventListener('keydown', loadGtm, { once: true });
-            window.addEventListener('scroll', loadGtm, { once: true, passive: true });
-            window.setTimeout(loadGtm, 6000);
           })();
         `}
       </Script>
