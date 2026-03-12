@@ -5,18 +5,24 @@ const noStoreHeaders = {
   'Cache-Control': 'private, no-store, no-cache, must-revalidate',
 };
 
-function extractValue(payload: Record<string, unknown>, key: string) {
-  const direct = payload[key];
+function extractValue(payload: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const direct = payload[key];
 
-  if (typeof direct === 'string' && direct) {
-    return direct;
+    if (typeof direct === 'string' && direct) {
+      return direct;
+    }
   }
 
   if (payload.data && typeof payload.data === 'object' && payload.data !== null) {
-    const nested = (payload.data as Record<string, unknown>)[key];
+    const nestedPayload = payload.data as Record<string, unknown>;
 
-    if (typeof nested === 'string' && nested) {
-      return nested;
+    for (const key of keys) {
+      const nested = nestedPayload[key];
+
+      if (typeof nested === 'string' && nested) {
+        return nested;
+      }
     }
   }
 
@@ -26,7 +32,7 @@ function extractValue(payload: Record<string, unknown>, key: string) {
 export async function POST(request: Request) {
   try {
     const payload = (await request.json()) as Record<string, unknown>;
-    const invoiceId = extractValue(payload, 'invoiceId');
+    const invoiceId = extractValue(payload, ['invoiceId', 'invoice_id', 'val_id', 'valId']);
     const metadata =
       payload.metadata && typeof payload.metadata === 'object' && payload.metadata !== null
         ? (payload.metadata as Record<string, unknown>)
@@ -34,7 +40,7 @@ export async function POST(request: Request) {
           ? (((payload.data as Record<string, unknown>).metadata as Record<string, unknown>) ?? {})
           : {};
     const orderId =
-      extractValue(payload, 'orderId') ||
+      extractValue(payload, ['orderId', 'order_id']) ||
       (typeof metadata.orderId === 'string' ? metadata.orderId : '');
 
     if (!invoiceId || !orderId) {

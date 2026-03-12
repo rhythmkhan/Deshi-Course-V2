@@ -10,6 +10,9 @@ interface PaymentSuccessPageProps {
   searchParams: Promise<{
     orderId?: string;
     invoiceId?: string;
+    invoice_id?: string;
+    val_id?: string;
+    valId?: string;
     fromCart?: string;
   }>;
 }
@@ -17,7 +20,8 @@ interface PaymentSuccessPageProps {
 export default async function PaymentSuccessPage({ searchParams }: PaymentSuccessPageProps) {
   const params = await searchParams;
   const orderId = params.orderId ?? '';
-  const invoiceId = params.invoiceId ?? '';
+  const invoiceId =
+    params.invoiceId ?? params.invoice_id ?? params.val_id ?? params.valId ?? '';
   const fromCart = params.fromCart === '1';
 
   const result =

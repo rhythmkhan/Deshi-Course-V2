@@ -251,6 +251,106 @@ interface ProfileState {
   welcomeDiscountUsesRemaining: number;
 }
 
+interface EnrollmentRow {
+  course_slug: string;
+  progress: number | null;
+  enrollment_status: string | null;
+}
+
+interface DashboardOrderRow {
+  id: string;
+  course_slug: string;
+  metadata?: Record<string, unknown> | null;
+}
+
+interface DashboardOrderItemRow {
+  order_id: string;
+  item_type: 'course' | 'bundle' | 'shop';
+  item_slug: string;
+}
+
+interface DeliveryAccessLink {
+  track: 'n8n' | 'vibe';
+  resource: 'course' | 'support' | 'template';
+  label: string;
+  url: string;
+}
+
+function decodeDashboardOrderItems(encodedValue: string) {
+  if (!encodedValue.startsWith('cart:')) {
+    return [];
+  }
+
+  return encodedValue
+    .slice(5)
+    .split('|')
+    .map((entry) => {
+      const [type, ...slugParts] = entry.split(':');
+      const slug = slugParts.join(':');
+
+      if (!type || !slug || !['course', 'bundle', 'shop'].includes(type)) {
+        return null;
+      }
+
+      return {
+        type: type as DashboardOrderItemRow['item_type'],
+        slug,
+      };
+    })
+    .filter((item): item is { type: DashboardOrderItemRow['item_type']; slug: string } => Boolean(item));
+}
+
+function extractDeliveryAccessLinks(metadata: unknown) {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return [] as DeliveryAccessLink[];
+  }
+
+  const rawMetadata = metadata as Record<string, unknown>;
+  const rawDeliveryLinks = rawMetadata.deliveryLinks;
+
+  if (!rawDeliveryLinks || typeof rawDeliveryLinks !== 'object' || Array.isArray(rawDeliveryLinks)) {
+    return [] as DeliveryAccessLink[];
+  }
+
+  const output: DeliveryAccessLink[] = [];
+  const deliveryTracks = rawDeliveryLinks as Record<string, unknown>;
+
+  for (const track of ['n8n', 'vibe'] as const) {
+    const trackData = deliveryTracks[track];
+
+    if (!trackData || typeof trackData !== 'object' || Array.isArray(trackData)) {
+      continue;
+    }
+
+    const trackLinks = trackData as Record<string, unknown>;
+
+    for (const resource of ['course', 'support', 'template'] as const) {
+      const url = trackLinks[resource];
+
+      if (typeof url !== 'string' || !url) {
+        continue;
+      }
+
+      const prefix = track === 'vibe' ? 'Vibe Coding' : 'n8n Automation';
+      const label =
+        resource === 'course'
+          ? `${prefix} Telegram channel`
+          : resource === 'support'
+            ? `${prefix} support group`
+            : `${prefix} resource library`;
+
+      output.push({
+        track,
+        resource,
+        label,
+        url,
+      });
+    }
+  }
+
+  return output;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const { supabase, user, isConfigured, isLoading: isAuthLoading } = useAuth();
@@ -274,6 +374,11 @@ export default function DashboardPage() {
   const [referralError, setReferralError] = useState('');
   const [isApplyingReferral, setIsApplyingReferral] = useState(false);
   const [isMobileProfileMenuOpen, setIsMobileProfileMenuOpen] = useState(false);
+  const [ownedCourseSlugs, setOwnedCourseSlugs] = useState<string[]>([]);
+  const [courseProgressBySlug, setCourseProgressBySlug] = useState<Record<string, number>>({});
+  const [purchasedBundleSlugs, setPurchasedBundleSlugs] = useState<string[]>([]);
+  const [purchasedProductSlugs, setPurchasedProductSlugs] = useState<string[]>([]);
+  const [deliveryAccessLinks, setDeliveryAccessLinks] = useState<DeliveryAccessLink[]>([]);
 
   async function loadReferralState(userId: string, fallbackCode: string) {
     if (!supabase) {
@@ -328,6 +433,144 @@ export default function DashboardPage() {
     setReferralCount(count ?? 0);
 
     return profileState;
+  }
+
+  async function loadPurchaseState(userId: string) {
+    if (!supabase) {
+      throw new Error('Supabase browser client is not configured.');
+    }
+
+    const { data: enrollmentRows, error: enrollmentsError } = await supabase
+      .from('enrollments')
+      .select('course_slug, progress, enrollment_status')
+      .eq('user_id', userId)
+      .in('enrollment_status', ['active', 'completed', 'pending']);
+
+    if (enrollmentsError) {
+      console.warn('Enrollment load failed', enrollmentsError);
+    }
+
+    const { data: paidOrders, error: ordersError } = await supabase
+      .from('orders')
+      .select('id, course_slug, metadata')
+      .eq('user_id', userId)
+      .eq('payment_status', 'paid')
+      .order('created_at', { ascending: false });
+
+    if (ordersError) {
+      console.warn('Paid orders load failed', ordersError);
+    }
+
+    const safeOrders = (paidOrders as DashboardOrderRow[] | null) ?? [];
+    const orderIds = safeOrders.map((order) => order.id);
+
+    let orderItems: DashboardOrderItemRow[] = [];
+
+    if (orderIds.length > 0) {
+      const { data: orderItemRows, error: orderItemsError } = await supabase
+        .from('order_items')
+        .select('order_id, item_type, item_slug')
+        .in('order_id', orderIds);
+
+      if (orderItemsError) {
+        console.warn('Order items load failed', orderItemsError);
+      } else {
+        orderItems = (orderItemRows as DashboardOrderItemRow[] | null) ?? [];
+      }
+    }
+
+    const ownedCourses = new Set<string>();
+    const bundleSlugs = new Set<string>();
+    const productSlugs = new Set<string>();
+    const progressMap: Record<string, number> = {};
+    const accessLinkMap = new Map<string, DeliveryAccessLink>();
+
+    for (const enrollment of (enrollmentRows as EnrollmentRow[] | null) ?? []) {
+      if (!enrollment.course_slug) {
+        continue;
+      }
+
+      ownedCourses.add(enrollment.course_slug);
+      progressMap[enrollment.course_slug] = Number(enrollment.progress ?? 0);
+    }
+
+    for (const order of safeOrders) {
+      const matchedOrderItems = orderItems.filter((item) => item.order_id === order.id);
+
+      for (const link of extractDeliveryAccessLinks(order.metadata)) {
+        if (!accessLinkMap.has(link.url)) {
+          accessLinkMap.set(link.url, link);
+        }
+      }
+
+      if (matchedOrderItems.length > 0) {
+        for (const item of matchedOrderItems) {
+          if (item.item_type === 'course') {
+            ownedCourses.add(item.item_slug);
+            continue;
+          }
+
+          if (item.item_type === 'bundle') {
+            bundleSlugs.add(item.item_slug);
+            const bundle = BUNDLE_CATALOG.find((entry) => entry.slug === item.item_slug);
+
+            for (const courseSlug of bundle?.includedCourseSlugs ?? []) {
+              ownedCourses.add(courseSlug);
+            }
+
+            continue;
+          }
+
+          if (item.item_type === 'shop') {
+            productSlugs.add(item.item_slug);
+          }
+        }
+
+        continue;
+      }
+
+      if (!order.course_slug) {
+        continue;
+      }
+
+      if (order.course_slug.startsWith('cart:')) {
+        for (const item of decodeDashboardOrderItems(order.course_slug)) {
+          if (item.type === 'course') {
+            ownedCourses.add(item.slug);
+            continue;
+          }
+
+          if (item.type === 'bundle') {
+            bundleSlugs.add(item.slug);
+            const bundle = BUNDLE_CATALOG.find((entry) => entry.slug === item.slug);
+
+            for (const courseSlug of bundle?.includedCourseSlugs ?? []) {
+              ownedCourses.add(courseSlug);
+            }
+
+            continue;
+          }
+
+          if (item.type === 'shop') {
+            productSlugs.add(item.slug);
+          }
+        }
+
+        continue;
+      }
+
+      const directCourse = COURSE_CATALOG.find((course) => course.slug === order.course_slug);
+
+      if (directCourse) {
+        ownedCourses.add(directCourse.slug);
+      }
+    }
+
+    setOwnedCourseSlugs(Array.from(ownedCourses));
+    setCourseProgressBySlug(progressMap);
+    setPurchasedBundleSlugs(Array.from(bundleSlugs));
+    setPurchasedProductSlugs(Array.from(productSlugs));
+    setDeliveryAccessLinks(Array.from(accessLinkMap.values()));
   }
 
   function removeReferralParamFromUrl() {
@@ -538,7 +781,10 @@ export default function DashboardPage() {
       const fallbackCode = buildFallbackReferralCode(displayName, user.email ?? '');
       setReferralCode(fallbackCode);
 
-      const profileState = await loadReferralState(user.id, fallbackCode);
+      const [profileState] = await Promise.all([
+        loadReferralState(user.id, fallbackCode),
+        loadPurchaseState(user.id),
+      ]);
 
       if (!isMounted) {
         return;
@@ -574,7 +820,21 @@ export default function DashboardPage() {
     router.refresh();
   }
 
-  const filteredCourses = COURSE_CATALOG.filter(course => {
+  const dashboardCourses = COURSE_CATALOG.map((course) => ({
+    ...course,
+    isOwned: ownedCourseSlugs.includes(course.slug),
+    progress: courseProgressBySlug[course.slug] ?? course.progress,
+  }));
+  const dashboardBundles = BUNDLE_CATALOG.map((bundle) => ({
+    ...bundle,
+    isOwned: purchasedBundleSlugs.includes(bundle.slug),
+  }));
+  const dashboardProducts = SHOP_CATALOG.map((item) => ({
+    ...item,
+    isOwned: purchasedProductSlugs.includes(item.slug),
+  }));
+
+  const filteredCourses = dashboardCourses.filter(course => {
     const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase());
     if (activeTab === 'owned') return matchesSearch && course.isOwned;
     return matchesSearch;
@@ -838,6 +1098,40 @@ export default function DashboardPage() {
                 <h2 className="text-2xl font-bold mb-2">সাপোর্ট সেন্টার</h2>
                 <p className="text-sm text-gray-500">যেকোনো কোর্স, লগইন বা payment issue হলে এখান থেকেই দ্রুত সহায়তা নিন।</p>
               </div>
+
+              {deliveryAccessLinks.length > 0 && (
+                <div className="rounded-[2rem] border border-green-100 bg-green-50/60 p-6">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">আপনার unlocked access</h3>
+                      <p className="mt-1 text-sm text-gray-600">Paid order confirm হওয়ার পর যে channel/group/resource খুলেছে, সেগুলো এখানে পাবেন।</p>
+                    </div>
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-green-700">
+                      {deliveryAccessLinks.length} access
+                    </span>
+                  </div>
+
+                  <div className="mt-5 grid gap-3">
+                    {deliveryAccessLinks.map((link) => (
+                      <a
+                        key={`${link.resource}-${link.url}`}
+                        href={link.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-between rounded-2xl border border-white/80 bg-white px-4 py-4 text-sm transition hover:border-brand/20 hover:bg-brand/5"
+                      >
+                        <div>
+                          <p className="font-bold text-gray-900">{link.label}</p>
+                          <p className="mt-1 text-xs uppercase tracking-[0.14em] text-gray-400">
+                            {link.track} · {link.resource}
+                          </p>
+                        </div>
+                        <span className="font-bold text-brand">Open</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
@@ -1195,7 +1489,7 @@ export default function DashboardPage() {
         ) : activeTab === 'shop' ? (
           <div className="w-full space-y-6">
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
-              {SHOP_CATALOG.map((item) => (
+              {dashboardProducts.map((item) => (
                 <article key={item.id} className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-xl">
                   <div className="relative h-28 sm:h-48">
                     <Image
@@ -1209,6 +1503,11 @@ export default function DashboardPage() {
                     {item.tag && (
                       <span className="absolute left-3 top-3 rounded-full bg-brand px-2.5 py-1 text-[10px] font-bold text-white sm:left-4 sm:top-4 sm:px-3 sm:text-xs">
                         {item.tag}
+                      </span>
+                    )}
+                    {item.isOwned && (
+                      <span className="absolute right-3 top-3 rounded-full bg-green-500 px-2.5 py-1 text-[10px] font-bold text-white sm:right-4 sm:top-4 sm:px-3 sm:text-xs">
+                        Purchased
                       </span>
                     )}
                   </div>
@@ -1230,20 +1529,30 @@ export default function DashboardPage() {
                       <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-end">
                         <Link
                           href={`/templates/${item.slug}`}
-                          className="min-w-0 rounded-lg bg-brand px-2 py-2 text-center text-[11px] font-bold text-white transition hover:bg-brand-dark sm:w-auto sm:rounded-xl sm:px-4 sm:py-2 sm:text-sm"
+                          className={`min-w-0 rounded-lg px-2 py-2 text-center text-[11px] font-bold transition sm:w-auto sm:rounded-xl sm:px-4 sm:py-2 sm:text-sm ${
+                            item.isOwned
+                              ? 'bg-green-50 text-green-700 hover:bg-green-100'
+                              : 'bg-brand px-2 text-white hover:bg-brand-dark'
+                          }`}
                         >
-                          <span className="sm:hidden">দেখুন</span>
-                          <span className="hidden sm:inline">বিস্তারিত দেখুন</span>
+                          <span className="sm:hidden">{item.isOwned ? 'ওপেন' : 'দেখুন'}</span>
+                          <span className="hidden sm:inline">{item.isOwned ? 'রিসোর্স খুলুন' : 'বিস্তারিত দেখুন'}</span>
                         </Link>
-                        <AddToCartButton
-                          item={{ type: 'shop', slug: item.slug }}
-                          className="min-w-0 w-full px-2 py-2 text-[11px] sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
-                          defaultLabel="কার্টে যোগ করুন"
-                          addedLabel="কার্টে আছে"
-                          mobileLabel="কার্টে"
-                          mobileAddedLabel="আছে"
-                          hideIconOnMobile
-                        />
+                        {item.isOwned ? (
+                          <div className="flex items-center justify-center rounded-lg border border-green-100 bg-green-50 px-2 py-2 text-center text-[11px] font-bold text-green-700 sm:rounded-xl sm:px-4 sm:py-2 sm:text-sm">
+                            Already purchased
+                          </div>
+                        ) : (
+                          <AddToCartButton
+                            item={{ type: 'shop', slug: item.slug }}
+                            className="min-w-0 w-full px-2 py-2 text-[11px] sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
+                            defaultLabel="কার্টে যোগ করুন"
+                            addedLabel="কার্টে আছে"
+                            mobileLabel="কার্টে"
+                            mobileAddedLabel="আছে"
+                            hideIconOnMobile
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1254,7 +1563,7 @@ export default function DashboardPage() {
         ) : activeTab === 'bundle' ? (
           <div className="w-full space-y-6">
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
-              {BUNDLE_CATALOG.map((bundle) => (
+              {dashboardBundles.map((bundle) => (
                 <article key={bundle.id} className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-xl">
                   <div className="relative h-28 sm:h-48">
                     <Image
@@ -1267,6 +1576,11 @@ export default function DashboardPage() {
                     {bundle.tag && (
                       <span className="absolute left-3 top-3 rounded-full bg-brand px-2.5 py-1 text-[10px] font-bold text-white sm:left-4 sm:top-4 sm:px-3 sm:text-xs">
                         {bundle.tag}
+                      </span>
+                    )}
+                    {bundle.isOwned && (
+                      <span className="absolute right-3 top-3 rounded-full bg-green-500 px-2.5 py-1 text-[10px] font-bold text-white sm:right-4 sm:top-4 sm:px-3 sm:text-xs">
+                        Purchased
                       </span>
                     )}
                   </div>
@@ -1290,20 +1604,30 @@ export default function DashboardPage() {
                       <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-end">
                         <Link
                           href={`/bundles/${bundle.slug}`}
-                          className="min-w-0 rounded-lg bg-brand px-2 py-2 text-center text-[11px] font-bold text-white transition hover:bg-brand-dark sm:w-auto sm:rounded-xl sm:px-4 sm:py-2 sm:text-sm"
+                          className={`min-w-0 rounded-lg px-2 py-2 text-center text-[11px] font-bold transition sm:w-auto sm:rounded-xl sm:px-4 sm:py-2 sm:text-sm ${
+                            bundle.isOwned
+                              ? 'bg-green-50 text-green-700 hover:bg-green-100'
+                              : 'bg-brand text-white hover:bg-brand-dark'
+                          }`}
                         >
-                          <span className="sm:hidden">দেখুন</span>
-                          <span className="hidden sm:inline">বিস্তারিত দেখুন</span>
+                          <span className="sm:hidden">{bundle.isOwned ? 'ওপেন' : 'দেখুন'}</span>
+                          <span className="hidden sm:inline">{bundle.isOwned ? 'বান্ডেল খুলুন' : 'বিস্তারিত দেখুন'}</span>
                         </Link>
-                        <AddToCartButton
-                          item={{ type: 'bundle', slug: bundle.slug }}
-                          className="min-w-0 w-full px-2 py-2 text-[11px] sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
-                          defaultLabel="কার্টে যোগ করুন"
-                          addedLabel="কার্টে আছে"
-                          mobileLabel="কার্টে"
-                          mobileAddedLabel="আছে"
-                          hideIconOnMobile
-                        />
+                        {bundle.isOwned ? (
+                          <div className="flex items-center justify-center rounded-lg border border-green-100 bg-green-50 px-2 py-2 text-center text-[11px] font-bold text-green-700 sm:rounded-xl sm:px-4 sm:py-2 sm:text-sm">
+                            Already purchased
+                          </div>
+                        ) : (
+                          <AddToCartButton
+                            item={{ type: 'bundle', slug: bundle.slug }}
+                            className="min-w-0 w-full px-2 py-2 text-[11px] sm:w-auto sm:px-4 sm:py-2 sm:text-sm"
+                            defaultLabel="কার্টে যোগ করুন"
+                            addedLabel="কার্টে আছে"
+                            mobileLabel="কার্টে"
+                            mobileAddedLabel="আছে"
+                            hideIconOnMobile
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1345,9 +1669,12 @@ export default function DashboardPage() {
                     <div className="mt-auto">
                       {course.isOwned ? (
                         <div className="space-y-3">
-                          <button className="w-full rounded-lg bg-brand py-2 text-xs font-bold text-white transition hover:bg-brand-dark sm:rounded-xl sm:py-2.5 sm:text-sm">
+                          <Link
+                            href={`/courses/${course.slug}`}
+                            className="block w-full rounded-lg bg-brand py-2 text-center text-xs font-bold text-white transition hover:bg-brand-dark sm:rounded-xl sm:py-2.5 sm:text-sm"
+                          >
                             চালিয়ে যান
-                          </button>
+                          </Link>
                         </div>
                       ) : (
                         <div className="space-y-4">
