@@ -351,11 +351,27 @@ function extractDeliveryAccessLinks(metadata: unknown) {
   return output;
 }
 
+const courseLevelMeta: Record<'beginner' | 'intermediate' | 'advanced', { label: string; className: string }> = {
+  beginner: {
+    label: 'Beginner',
+    className: 'bg-emerald-500 text-white',
+  },
+  intermediate: {
+    label: 'Intermediate',
+    className: 'bg-amber-400 text-gray-900',
+  },
+  advanced: {
+    label: 'Advance',
+    className: 'bg-rose-500 text-white',
+  },
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const { supabase, user, isConfigured, isLoading: isAuthLoading } = useAuth();
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPresetFilter, setSelectedPresetFilter] = useState<'beginner' | 'intermediate' | 'advanced' | 'free' | null>(null);
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'owned', 'refer', 'shop', 'bundle', 'support'
   const [currentUserId, setCurrentUserId] = useState('');
   const [userName, setUserName] = useState('শিক্ষার্থী');
@@ -834,10 +850,30 @@ export default function DashboardPage() {
     isOwned: purchasedProductSlugs.includes(item.slug),
   }));
 
+  const presetFilters: Array<{
+    value: 'beginner' | 'intermediate' | 'advanced' | 'free';
+    label: string;
+  }> = [
+    { value: 'beginner', label: 'beginner' },
+    { value: 'intermediate', label: 'intermediate' },
+    { value: 'advanced', label: 'advance' },
+    { value: 'free', label: 'free' },
+  ];
+
   const filteredCourses = dashboardCourses.filter(course => {
-    const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase());
-    if (activeTab === 'owned') return matchesSearch && course.isOwned;
-    return matchesSearch;
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+    const matchesSearch =
+      normalizedSearch.length === 0 ||
+      course.title.toLowerCase().includes(normalizedSearch) ||
+      course.category.toLowerCase().includes(normalizedSearch);
+    const matchesPreset =
+      !selectedPresetFilter ||
+      (selectedPresetFilter === 'free'
+        ? course.price === 0
+        : course.level === selectedPresetFilter);
+
+    if (activeTab === 'owned') return matchesSearch && matchesPreset && course.isOwned;
+    return matchesSearch && matchesPreset;
   });
   const samplePricing = getPricingPreview(100, walletBalance, welcomeDiscountUsesRemaining);
   const referralLink = referralCode ? `/signup?ref=${encodeURIComponent(referralCode)}` : '/signup';
@@ -1056,15 +1092,37 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center space-x-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input 
-                type="text"
-                placeholder="কোর্স খুঁজুন..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition w-full md:w-64"
-              />
+            <div className="flex items-center gap-3">
+              <div className="hidden xl:flex items-center gap-2">
+                {presetFilters.map((filter) => {
+                  const isActive = selectedPresetFilter === filter.value;
+
+                  return (
+                    <button
+                      key={filter.value}
+                      type="button"
+                      onClick={() => setSelectedPresetFilter(isActive ? null : filter.value)}
+                      className={`rounded-full border px-3 py-2 text-xs font-semibold capitalize transition ${
+                        isActive
+                          ? 'border-brand bg-brand text-white shadow-sm'
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-brand/30 hover:text-brand'
+                      }`}
+                    >
+                      {filter.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input 
+                  type="text"
+                  placeholder="কোর্স খুঁজুন..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition w-full md:w-64"
+                />
+              </div>
             </div>
             <div className="hidden xl:flex items-center gap-2 rounded-2xl bg-brand/10 px-4 py-2 text-brand">
               <Coins className="h-5 w-5" />
@@ -1078,6 +1136,26 @@ export default function DashboardPage() {
 
         {/* Mobile Search Bar */}
         <div className="lg:hidden mb-6">
+          <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+            {presetFilters.map((filter) => {
+              const isActive = selectedPresetFilter === filter.value;
+
+              return (
+                <button
+                  key={filter.value}
+                  type="button"
+                  onClick={() => setSelectedPresetFilter(isActive ? null : filter.value)}
+                  className={`shrink-0 rounded-full border px-3 py-2 text-xs font-semibold capitalize transition ${
+                    isActive
+                      ? 'border-brand bg-brand text-white shadow-sm'
+                      : 'border-gray-200 bg-white text-gray-600'
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              );
+            })}
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input 
@@ -1655,8 +1733,19 @@ export default function DashboardPage() {
                       unoptimized={course.image.startsWith('/api/catalog-art')}
                       referrerPolicy="no-referrer"
                     />
+                    <div className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-bold sm:left-4 sm:top-4 sm:px-3 sm:text-xs ${courseLevelMeta[course.level].className}`}>
+                      {courseLevelMeta[course.level].label}
+                    </div>
+                    {course.promoTag && (
+                      <div
+                        className="absolute right-2 top-2 inline-flex h-[58px] w-[58px] -rotate-12 items-center justify-center border-2 border-white bg-[#ef4444] px-2 text-center text-[8px] font-black uppercase leading-tight tracking-[0.08em] text-white shadow-[0_10px_24px_rgba(15,23,42,0.28)] sm:right-4 sm:top-4 sm:h-[72px] sm:w-[72px] sm:text-[9px]"
+                        style={{ clipPath: 'polygon(50% 0%, 60% 18%, 78% 6%, 74% 26%, 94% 22%, 82% 40%, 100% 50%, 82% 60%, 94% 78%, 74% 74%, 78% 94%, 60% 82%, 50% 100%, 40% 82%, 22% 94%, 26% 74%, 6% 78%, 18% 60%, 0% 50%, 18% 40%, 6% 22%, 26% 26%, 22% 6%, 40% 18%)' }}
+                      >
+                        {course.promoTag}
+                      </div>
+                    )}
                     {course.isOwned && (
-                      <div className="absolute top-3 right-3 flex items-center space-x-1 rounded-full bg-green-500 px-2 py-1 text-[10px] font-bold text-white">
+                      <div className="absolute bottom-3 right-3 flex items-center space-x-1 rounded-full bg-green-500 px-2 py-1 text-[10px] font-bold text-white">
                         <CheckCircle className="w-3 h-3" />
                         <span>Owned</span>
                       </div>

@@ -23,7 +23,7 @@ export default function TermsPage() {
           
           <h2 className="text-2xl font-bold mb-6">২. পেমেন্ট ও রিফান্ড</h2>
           <p className="text-gray-600 mb-8">
-            কোর্সের ফি অগ্রিম প্রদান করতে হবে। বিশেষ ক্ষেত্রে আমাদের রিফান্ড পলিসি অনুযায়ী রিফান্ড প্রদান করা হতে পারে।
+            কোর্সের ফি অগ্রিম প্রদান করতে হবে। payment complete হওয়ার পর যদি এখনো course access, delivery link, group access বা download/resource handover না করা হয়ে থাকে, তাহলে যাচাই সাপেক্ষে refund সম্ভব। তবে একবার course deliver হয়ে গেলে, access/link/resource/share/group entry দেওয়া হলে বা course account-এ unlock হয়ে গেলে কোনো অবস্থাতেই refund প্রযোজ্য হবে না।
           </p>
           
           <h2 className="text-2xl font-bold mb-6">৩. মেধা সম্পদ</h2>

@@ -126,6 +126,7 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
     pricingState.welcomeDiscountUsesRemaining,
     appliedCoupon,
   );
+  const isFreeCourse = preview.finalPrice === 0;
 
   const couponFromUrl = searchParams.get('coupon') ?? searchParams.get('couponCode') ?? '';
 
@@ -214,6 +215,33 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
     });
 
     try {
+      if (isFreeCourse) {
+        const response = await fetch('/api/courses/free-enroll', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            courseSlug: course.slug,
+          }),
+        });
+
+        const data = (await response.json()) as { ok?: boolean; error?: string };
+
+        if (response.status === 401) {
+          router.push(`/signin?redirect=${encodeURIComponent(pathname)}`);
+          return;
+        }
+
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || 'Free enrollment করা যায়নি।');
+        }
+
+        setIsCheckingOut(false);
+        router.refresh();
+        return;
+      }
+
       const response = await fetch('/api/payments/zinipay/create', {
         method: 'POST',
         headers: {
@@ -249,7 +277,7 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
         <div>
           <p className="text-sm font-medium text-gray-500">কোর্স ফি</p>
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-3xl font-bold text-gray-900">৳ {formatPrice(preview.finalPrice)}</span>
+            <span className="text-3xl font-bold text-gray-900">{preview.finalPrice === 0 ? 'FREE' : `৳ ${formatPrice(preview.finalPrice)}`}</span>
             {course.originalPrice > preview.finalPrice && (
               <span className="text-base text-gray-400 line-through">৳ {formatPrice(course.originalPrice)}</span>
             )}
@@ -366,13 +394,13 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
           <div className="mt-4 border-t border-dashed border-gray-200 pt-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold text-gray-900">এখন দিতে হবে</span>
-              <span className="text-2xl font-bold text-gray-900">৳ {formatPrice(preview.finalPrice)}</span>
+              <span className="text-2xl font-bold text-gray-900">{isFreeCourse ? 'FREE' : `৳ ${formatPrice(preview.finalPrice)}`}</span>
             </div>
           </div>
         </div>
       )}
 
-      {!pricingState.isOwned && (
+      {!pricingState.isOwned && !isFreeCourse && (
         <div className="mb-5">
           <CheckoutCouponField
             code={couponInput}
@@ -432,10 +460,16 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
             className="block w-full rounded-2xl bg-brand px-6 py-3.5 text-center font-bold text-white shadow-lg transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70"
           >
             {isCheckingOut
-              ? 'Pay হচ্ছে...'
+              ? isFreeCourse
+                ? 'Enroll হচ্ছে...'
+                : 'Pay হচ্ছে...'
               : pricingState.isAuthenticated
-                ? `৳ ${formatPrice(preview.finalPrice)} Pay করুন`
-                : 'Pay করার আগে sign in করুন'}
+                ? isFreeCourse
+                  ? 'এখনই Enroll করুন'
+                  : `৳ ${formatPrice(preview.finalPrice)} Pay করুন`
+                : isFreeCourse
+                  ? 'Enroll করার আগে sign in করুন'
+                  : 'Pay করার আগে sign in করুন'}
           </button>
         )}
         <div className="grid gap-3 sm:grid-cols-2">
@@ -447,12 +481,18 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
               আমার কোর্সে দেখুন
             </Link>
           ) : (
-            <AddToCartButton
-              item={{ type: 'course', slug: course.slug }}
-              className="w-full"
-              defaultLabel="কার্টে যোগ করুন"
-              addedLabel="কার্টে আছে"
-            />
+            !isFreeCourse ? (
+              <AddToCartButton
+                item={{ type: 'course', slug: course.slug }}
+                className="w-full"
+                defaultLabel="কার্টে যোগ করুন"
+                addedLabel="কার্টে আছে"
+              />
+            ) : (
+              <div className="flex items-center justify-center rounded-2xl border border-green-100 bg-green-50 px-6 py-3.5 text-center font-bold text-green-700">
+                Free course, instant access
+              </div>
+            )
           )}
           <Link
             href={pricingState.isOwned ? '/dashboard?tab=support' : '/dashboard?tab=refer'}

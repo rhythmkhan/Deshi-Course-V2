@@ -25,7 +25,6 @@ export interface CourseDetail extends CourseSummary {
   workflow: string[];
   tools: string[];
   support: string;
-  certificate: string;
   facts: CourseFact[];
   faq: CourseFaq[];
   modules?: CourseModule[];
@@ -86,7 +85,6 @@ function buildGenericCourseDetail(course: CourseSummary): CourseDetail {
       'Lifetime access, কোনো monthly fee নাই',
       'All future updates free',
       'Private support group access',
-      'Certificate of completion',
     ],
     audience: [
       `${course.title} skill শিখতে চান এমন beginner learner`,
@@ -100,12 +98,10 @@ function buildGenericCourseDetail(course: CourseSummary): CourseDetail {
     ],
     tools: inferCourseTools(course),
     support: 'Private support group access থাকবে, যাতে learning-এর সময় প্রশ্ন বা stuck point clear করা যায়।',
-    certificate: 'Course flow complete করলে certificate of completion দেওয়া হবে।',
     facts: [
       { label: 'অ্যাক্সেস', value: 'Lifetime' },
       { label: 'আপডেট', value: 'Free' },
       { label: 'সাপোর্ট', value: 'Private group' },
-      { label: 'সার্টিফিকেট', value: 'Included' },
     ],
     faq: [
       {
@@ -139,8 +135,8 @@ const SPECIFIC_COURSE_DETAILS: Record<string, CourseDetailOverrides> = {
       'Node, connection, workflow structure, error handling ও debugging practice',
       'Real-world workflow use-case: lead, CRM, email ও e-commerce automation',
       'Bonus: weekly live Q&A session access',
+      'Offer থাকা পর্যন্ত course-এর সাথে ১ মাস free hosting',
       'Bangla support ও private support group access',
-      'Certificate of completion',
     ],
     audience: [
       'Freelancers যারা Upwork/Fiverr-এ automation service দিয়ে আলাদা হতে চান',
@@ -157,8 +153,7 @@ const SPECIFIC_COURSE_DETAILS: Record<string, CourseDetailOverrides> = {
     ],
     tools: ['n8n', 'Google Sheets', 'CRM integrations', 'OpenAI', 'Webhooks', 'Reporting dashboard tools'],
     support:
-      'Weekly live Q&A session, private support group এবং Bangla step-by-step guidance থাকবে, যাতে beginner হলেও stuck point clear করা যায় এবং workflow polish করা যায়।',
-    certificate: 'কোর্সের মূল flow complete করলে Deshi Course থেকে certificate of completion পাবেন।',
+      'Weekly live Q&A session, private support group এবং Bangla step-by-step guidance থাকবে, যাতে beginner হলেও stuck point clear করা যায় এবং workflow polish করা যায়। Offer active থাকা পর্যন্ত এই course-এর সাথে ১ মাস free hosting-ও পাওয়া যাবে।',
     facts: [
       { label: 'ফোকাস', value: 'Basics to Pro' },
       { label: 'স্টাইল', value: 'Practical workflow' },
@@ -177,6 +172,10 @@ const SPECIFIC_COURSE_DETAILS: Record<string, CourseDetailOverrides> = {
       {
         question: 'Freelancing বা client work-এর জন্য useful হবে?',
         answer: 'হ্যাঁ। visible course outline-এ automation service, Upwork/Fiverr strategy, client onboarding, reminder automation, retention flow এবং productized service launch-এর use-case দেখানো হয়েছে।',
+      },
+      {
+        question: 'Free hosting offer কী?',
+        answer: 'বর্তমান offer active থাকা পর্যন্ত n8n Automation Mastery course-এর সাথে ১ মাস free hosting পাওয়া যাবে। Offer শেষ হয়ে গেলে এই সুবিধা পরিবর্তন হতে পারে।',
       },
     ],
     modules: [
@@ -341,7 +340,6 @@ const SPECIFIC_COURSE_DETAILS: Record<string, CourseDetailOverrides> = {
       'Bangla support',
       'Project-based shipping',
       'Private support group access',
-      'Certificate of completion',
     ],
     audience: [
       'Freelancers যারা Upwork/Fiverr-এ দ্রুত delivery দিয়ে আলাদা হতে চান',
@@ -358,7 +356,6 @@ const SPECIFIC_COURSE_DETAILS: Record<string, CourseDetailOverrides> = {
     tools: ['Anthropic', 'GitHub', 'Next.js', 'React', 'Tailwind CSS', 'Supabase', 'Vercel'],
     support:
       'Weekly live Q&A + build review, prompt library support direction এবং private group feedback থাকবে যাতে build confusion দ্রুত clear করা যায়।',
-    certificate: 'Course flow complete করলে certificate of completion দেওয়া হবে।',
     facts: [
       { label: 'সময়', value: '৩০ দিন' },
       { label: 'মডিউল', value: '12' },

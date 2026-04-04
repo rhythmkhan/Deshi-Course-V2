@@ -4,7 +4,7 @@ import { Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, BadgeCheck, GraduationCap, Users, Wrench } from 'lucide-react';
+import { ArrowLeft, BadgeCheck, Users, Wrench } from 'lucide-react';
 import StructuredData from '@/components/StructuredData';
 import MetaViewContentTracker from '@/components/MetaViewContentTracker';
 import Navbar from '@/components/Navbar';
@@ -196,8 +196,8 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
               <StepSection title="শেখার workflow" items={course.workflow} />
             </div>
 
-            <SectionBlock title="টুলস, সাপোর্ট ও সার্টিফিকেট">
-              <div className="grid gap-6 lg:grid-cols-3">
+            <SectionBlock title="টুলস ও সাপোর্ট">
+              <div className="grid gap-6 lg:grid-cols-2">
                 <InfoCard
                   icon={<Wrench className="mb-4 h-5 w-5 text-brand" />}
                   title="ব্যবহৃত টুলস"
@@ -207,11 +207,6 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
                   icon={<Users className="mb-4 h-5 w-5 text-brand" />}
                   title="সাপোর্ট সিস্টেম"
                   content={<p className="text-sm leading-relaxed text-gray-600">{course.support}</p>}
-                />
-                <InfoCard
-                  icon={<GraduationCap className="mb-4 h-5 w-5 text-brand" />}
-                  title="সার্টিফিকেট"
-                  content={<p className="text-sm leading-relaxed text-gray-600">{course.certificate}</p>}
                 />
               </div>
             </SectionBlock>

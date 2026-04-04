@@ -1,39 +1,35 @@
 import Link from 'next/link';
 import {
-  Briefcase,
-  Code2,
-  Cpu,
-  Video,
+  BadgePercent,
+  CircleDashed,
+  Layers3,
+  Rocket,
 } from 'lucide-react';
-import { COURSE_CATALOG } from '@/lib/course-catalog';
 
 export default function Categories() {
-  const toBanglaNumber = (value: string | number) =>
-    String(value).replace(/\d/g, (digit) => '০১২৩৪৫৬৭৮৯'[Number(digit)]);
-
   const categories = [
     {
-      icon: Cpu,
-      title: 'এআই ও অটোমেশন',
-      count: COURSE_CATALOG.filter((course) => course.category === 'এআই ও অটোমেশন').length,
+      icon: CircleDashed,
+      title: 'Beginner',
+      subtitle: 'Start from basics',
       href: '/courses',
     },
     {
-      icon: Video,
-      title: 'ভিডিও এডিটিং',
-      count: COURSE_CATALOG.filter((course) => course.category === 'ভিডিও এডিটিং').length,
+      icon: Layers3,
+      title: 'Intermediate',
+      subtitle: 'Build with confidence',
       href: '/courses',
     },
     {
-      icon: Code2,
-      title: 'অ্যাপ ও প্রোগ্রামিং',
-      count: COURSE_CATALOG.filter((course) => course.category === 'অ্যাপ ও প্রোগ্রামিং').length,
+      icon: Rocket,
+      title: 'Advance',
+      subtitle: 'For deep mastery',
       href: '/courses',
     },
     {
-      icon: Briefcase,
-      title: 'বিজনেস ও সিকিউরিটি',
-      count: COURSE_CATALOG.filter((course) => course.category === 'বিজনেস ও সিকিউরিটি').length,
+      icon: BadgePercent,
+      title: 'Free',
+      subtitle: 'No-cost learning',
       href: '/courses',
     },
   ];
@@ -43,7 +39,6 @@ export default function Categories() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-20">
         <div className="mb-10 text-center sm:mb-12 lg:mb-16">
           <h2 className="mb-4 text-3xl font-bold sm:text-4xl">কোর্স <span className="text-brand">ক্যাটাগরি</span></h2>
-          <p className="text-sm text-gray-600 sm:text-base">আপনার পছন্দের বিষয় অনুযায়ী কোর্স নির্বাচন করুন</p>
         </div>
         
         <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4 md:gap-6">
@@ -55,7 +50,7 @@ export default function Categories() {
                 </div>
                 <h3 className="text-sm font-bold text-gray-900 sm:text-base lg:text-lg">{cat.title}</h3>
                 <p className="mt-1 text-xs text-gray-600 sm:text-sm">
-                  {toBanglaNumber(cat.count)} টি
+                  {cat.subtitle}
                 </p>
               </div>
             </Link>

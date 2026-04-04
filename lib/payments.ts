@@ -497,6 +497,75 @@ export async function createPendingOrder(courseSlug: string, couponCode?: string
   };
 }
 
+export async function createFreeCourseEnrollment(courseSlug: string) {
+  const { supabase, user } = await getAuthenticatedUserWithProfile();
+
+  const course = getCourseCardBySlug(courseSlug);
+
+  if (!course) {
+    throw new Error('Course not found');
+  }
+
+  if (course.price !== 0) {
+    throw new Error('এই courseটি free নয়।');
+  }
+
+  const existingOwnership = await supabase
+    .from('enrollments')
+    .select('course_slug')
+    .eq('user_id', user.id)
+    .eq('course_slug', course.slug)
+    .in('enrollment_status', ['active', 'completed', 'pending'])
+    .limit(1);
+
+  if (((existingOwnership.data as Array<{ course_slug: string }> | null) ?? []).length > 0) {
+    return { alreadyOwned: true };
+  }
+
+  const orderId = crypto.randomUUID();
+  const { error: orderError } = await supabase.from('orders').insert({
+    id: orderId,
+    user_id: user.id,
+    course_slug: course.slug,
+    amount: 0,
+    original_amount: 0,
+    referral_discount_amount: 0,
+    coupon_code: null,
+    coupon_discount_amount: 0,
+    wallet_discount_amount: 0,
+    final_amount: 0,
+    currency: 'BDT',
+    payment_status: 'paid',
+    payment_provider: 'free',
+    paid_at: new Date().toISOString(),
+    metadata: {
+      checkoutSource: 'free-course',
+      purchasedItems: [`course:${course.slug}`],
+    },
+  });
+
+  if (orderError) {
+    throw new Error('Free enrollment order create করা যায়নি।');
+  }
+
+  const { error: enrollmentError } = await supabase.from('enrollments').upsert(
+    {
+      user_id: user.id,
+      course_slug: course.slug,
+      course_title: course.title,
+      enrollment_status: 'active',
+      progress: 0,
+    },
+    { onConflict: 'user_id,course_slug' },
+  );
+
+  if (enrollmentError) {
+    throw new Error('Course enrollment create করা যায়নি।');
+  }
+
+  return { alreadyOwned: false };
+}
+
 function buildCartOrderSlug(items: CartCatalogItem[]) {
   return encodeCartOrderItems(items);
 }
