@@ -1,5 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { BUNDLE_CATALOG } from '@/lib/bundle-catalog';
+import {
+  BUNDLE_CATALOG,
+  bundleIncludesCourse,
+  bundleIncludesShop,
+} from '@/lib/bundle-catalog';
 import { COURSE_CATALOG } from '@/lib/course-catalog';
 import { SHOP_CATALOG } from '@/lib/shop-catalog';
 
@@ -169,7 +173,7 @@ export async function checkCourseOwnership(
     if (item.item_type === 'bundle') {
       const bundle = BUNDLE_CATALOG.find((entry) => entry.slug === item.item_slug);
 
-      if (bundle?.includedCourseSlugs.includes(courseSlug)) {
+      if (bundleIncludesCourse(bundle, courseSlug)) {
         return true;
       }
     }
@@ -188,7 +192,7 @@ export async function checkCourseOwnership(
       if (item.type === 'bundle') {
         const bundle = BUNDLE_CATALOG.find((entry) => entry.slug === item.slug);
 
-        if (bundle?.includedCourseSlugs.includes(courseSlug)) {
+        if (bundleIncludesCourse(bundle, courseSlug)) {
           return true;
         }
       }
@@ -219,7 +223,7 @@ export async function getCoursePurchaseDetails(
         }
 
         const bundle = BUNDLE_CATALOG.find((entry) => entry.slug === item.item_slug);
-        return Boolean(bundle?.includedCourseSlugs.includes(courseSlug));
+        return bundleIncludesCourse(bundle, courseSlug);
       })
     ) {
       return buildPurchaseDetails(order, orderItems);
@@ -239,7 +243,7 @@ export async function getCoursePurchaseDetails(
       if (item.type === 'bundle') {
         const bundle = BUNDLE_CATALOG.find((entry) => entry.slug === item.slug);
 
-        if (bundle?.includedCourseSlugs.includes(courseSlug)) {
+        if (bundleIncludesCourse(bundle, courseSlug)) {
           return buildPurchaseDetails(order, orderItems);
         }
       }
@@ -260,12 +264,28 @@ export async function checkItemPurchase(
     if (orderItem.item_type === item.type && orderItem.item_slug === item.slug) {
       return true;
     }
+
+    if (orderItem.item_type === 'bundle' && item.type === 'shop') {
+      const bundle = BUNDLE_CATALOG.find((entry) => entry.slug === orderItem.item_slug);
+
+      if (bundleIncludesShop(bundle, item.slug)) {
+        return true;
+      }
+    }
   }
 
   for (const order of orders) {
     for (const decodedItem of decodeCartOrderItems(order.course_slug)) {
       if (decodedItem.type === item.type && decodedItem.slug === item.slug) {
         return true;
+      }
+
+      if (decodedItem.type === 'bundle' && item.type === 'shop') {
+        const bundle = BUNDLE_CATALOG.find((entry) => entry.slug === decodedItem.slug);
+
+        if (bundleIncludesShop(bundle, item.slug)) {
+          return true;
+        }
       }
     }
   }
@@ -287,9 +307,37 @@ export async function getItemPurchaseDetails(
       return buildPurchaseDetails(order, orderItems);
     }
 
+    if (
+      item.type === 'shop' &&
+      matchedOrderItems.some((entry) => {
+        if (entry.item_type !== 'bundle') {
+          return false;
+        }
+
+        const bundle = BUNDLE_CATALOG.find((catalogEntry) => catalogEntry.slug === entry.item_slug);
+        return bundleIncludesShop(bundle, item.slug);
+      })
+    ) {
+      return buildPurchaseDetails(order, orderItems);
+    }
+
     const decodedItems = decodeCartOrderItems(order.course_slug);
 
     if (decodedItems.some((entry) => entry.type === item.type && entry.slug === item.slug)) {
+      return buildPurchaseDetails(order, orderItems);
+    }
+
+    if (
+      item.type === 'shop' &&
+      decodedItems.some((entry) => {
+        if (entry.type !== 'bundle') {
+          return false;
+        }
+
+        const bundle = BUNDLE_CATALOG.find((catalogEntry) => catalogEntry.slug === entry.slug);
+        return bundleIncludesShop(bundle, item.slug);
+      })
+    ) {
       return buildPurchaseDetails(order, orderItems);
     }
   }

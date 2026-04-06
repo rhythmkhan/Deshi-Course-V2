@@ -30,6 +30,7 @@ export interface CartCatalogItem extends CartItem {
   badge: string;
   meta: string;
   includedCourseSlugs?: string[];
+  includedShopSlugs?: string[];
 }
 
 export interface CartPricedItem extends CartCatalogItem {
@@ -89,8 +90,11 @@ export function resolveCartItem(input: CartItemInput): CartCatalogItem | null {
       price: bundle.bundlePrice,
       originalPrice: bundle.originalPrice,
       badge: 'বান্ডেল',
-      meta: `${bundle.includedCourseSlugs.length} কোর্স • ${bundle.highlight}`,
+      meta: bundle.includedShopSlugs?.length
+        ? `${bundle.includedCourseSlugs.length} কোর্স + ${bundle.includedShopSlugs.length} resource • ${bundle.highlight}`
+        : `${bundle.includedCourseSlugs.length} কোর্স • ${bundle.highlight}`,
       includedCourseSlugs: bundle.includedCourseSlugs,
+      includedShopSlugs: bundle.includedShopSlugs,
     };
   }
 
@@ -125,14 +129,23 @@ export function getPricedCartItems(items: CartCatalogItem[]): CartPricedItem[] {
     .filter((item) => item.type === 'bundle')
     .forEach((bundle) => {
       bundle.includedCourseSlugs?.forEach((courseSlug) => {
-        const currentTitles = bundleCoverageMap.get(courseSlug) ?? [];
-        bundleCoverageMap.set(courseSlug, [...currentTitles, bundle.title]);
+        const bundleKey = buildCartKey('course', courseSlug);
+        const currentTitles = bundleCoverageMap.get(bundleKey) ?? [];
+        bundleCoverageMap.set(bundleKey, [...currentTitles, bundle.title]);
+      });
+
+      bundle.includedShopSlugs?.forEach((shopSlug) => {
+        const bundleKey = buildCartKey('shop', shopSlug);
+        const currentTitles = bundleCoverageMap.get(bundleKey) ?? [];
+        bundleCoverageMap.set(bundleKey, [...currentTitles, bundle.title]);
       });
     });
 
   return items.map((item) => {
     const coveredByBundleTitles =
-      item.type === 'course' ? (bundleCoverageMap.get(item.slug) ?? []) : [];
+      item.type === 'bundle'
+        ? []
+        : (bundleCoverageMap.get(buildCartKey(item.type, item.slug)) ?? []);
     const isCoveredByBundle = coveredByBundleTitles.length > 0;
 
     return {

@@ -523,6 +523,10 @@ export async function createFreeCourseEnrollment(courseSlug: string) {
   }
 
   const orderId = crypto.randomUUID();
+  const orderMetadata = {
+    checkoutSource: 'free-course',
+    purchasedItems: [`course:${course.slug}`],
+  };
   const { error: orderError } = await supabase.from('orders').insert({
     id: orderId,
     user_id: user.id,
@@ -538,10 +542,7 @@ export async function createFreeCourseEnrollment(courseSlug: string) {
     payment_status: 'paid',
     payment_provider: 'free',
     paid_at: new Date().toISOString(),
-    metadata: {
-      checkoutSource: 'free-course',
-      purchasedItems: [`course:${course.slug}`],
-    },
+    metadata: orderMetadata,
   });
 
   if (orderError) {
@@ -561,6 +562,69 @@ export async function createFreeCourseEnrollment(courseSlug: string) {
 
   if (enrollmentError) {
     throw new Error('Course enrollment create করা যায়নি।');
+  }
+
+  const deliveryResult = await ensureTelegramDeliveryLinks({
+    orderId,
+    items: [
+      {
+        itemType: 'course',
+        slug: course.slug,
+        title: course.title,
+      },
+    ],
+    metadata: orderMetadata,
+  });
+
+  if (deliveryResult.errors.length > 0) {
+    console.error('Free course delivery link prepare failed', deliveryResult.errors.join(' | '));
+  }
+
+  let nextMetadata = buildOrderMetadata(deliveryResult.metadata);
+  let metadataDirty = deliveryResult.changed;
+  const emailFlags = nextMetadata.emailFlags as Record<string, unknown>;
+
+  if (user.email && emailFlags.success !== true) {
+    try {
+      await sendOrderConfirmationEmails({
+        to: user.email,
+        fullName: getCustomerName(user),
+        orderId,
+        items: [
+          {
+            title: course.title,
+            type: 'course',
+            price: 0,
+          },
+        ],
+        total: 0,
+        courseUrl: `${SITE_URL}/courses/${course.slug}`,
+        deliveryLinks: deliveryResult.links.map((link) => ({
+          label: link.label,
+          url: link.url,
+        })),
+        status: 'free-enrollment',
+      });
+
+      nextMetadata = {
+        ...nextMetadata,
+        emailFlags: {
+          ...emailFlags,
+          success: true,
+        },
+        successEmailSentAt: Date.now(),
+      };
+      metadataDirty = true;
+    } catch (error) {
+      console.error('Free enrollment email failed', error);
+    }
+  }
+
+  if (metadataDirty) {
+    await supabase
+      .from('orders')
+      .update({ metadata: nextMetadata })
+      .eq('id', orderId);
   }
 
   return { alreadyOwned: false };

@@ -200,6 +200,9 @@ export default async function BundleDetailPage({ params }: BundleDetailPageProps
               <div className="space-y-4 text-sm text-gray-600">
                 <InfoRow label="ধরন" value="Bundle offer" />
                 <InfoRow label="মূল কোর্স" value={`${bundle.includedCourseSlugs.length}টি`} />
+                {(bundle.includedShopSlugs?.length ?? 0) > 0 && (
+                  <InfoRow label="রিসোর্স" value={`${bundle.includedShopSlugs?.length ?? 0}টি`} />
+                )}
                 <InfoRow label="অ্যাক্সেস" value={bundle.accessLabel} />
               </div>
             </div>

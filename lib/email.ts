@@ -25,11 +25,12 @@ interface OrderEmailInput {
   to: string;
   fullName?: string;
   orderId: string;
-  invoiceId: string;
+  invoiceId?: string;
   items: OrderEmailItem[];
   total: number;
   courseUrl?: string;
   deliveryLinks?: OrderDeliveryEmailLink[];
+  status?: 'paid' | 'free-enrollment';
 }
 
 interface ContactEmailInput {
@@ -230,7 +231,9 @@ export async function sendOrderConfirmationEmails({
   total,
   courseUrl,
   deliveryLinks = [],
+  status = 'paid',
 }: OrderEmailInput) {
+  const isFreeEnrollment = status === 'free-enrollment';
   const customerName = fullName?.trim() || 'শিক্ষার্থী';
   const safeDeliveryLinks = deliveryLinks.filter(
     (link) => typeof link.label === 'string' && typeof link.url === 'string' && link.url,
@@ -262,36 +265,56 @@ export async function sendOrderConfirmationEmails({
   const deliveryLinksText = safeDeliveryLinks.length
     ? ['', 'Delivery links:', ...safeDeliveryLinks.map((link) => `- ${link.label}: ${link.url}`)]
     : [];
+  const customerMetaRows = [
+    { label: 'Order ID', value: orderId },
+    ...(invoiceId ? [{ label: 'Invoice ID', value: invoiceId }] : []),
+    { label: isFreeEnrollment ? 'Total paid' : 'Total', value: formatPrice(total) },
+  ];
+  const adminMetaRows = [
+    { label: 'Customer', value: customerName },
+    { label: 'Email', value: to },
+    { label: 'Order ID', value: orderId },
+    ...(invoiceId ? [{ label: 'Invoice ID', value: invoiceId }] : []),
+    { label: isFreeEnrollment ? 'Total paid' : 'Total', value: formatPrice(total) },
+  ];
 
   const customerHtml = renderEmailShell({
-    preheader: `${SITE_NAME}-এ আপনার পেমেন্ট সফল হয়েছে`,
-    title: 'পেমেন্ট সফল হয়েছে',
-    intro: `${customerName}, আপনার order confirm হয়েছে। access এখন active হওয়ার কথা।`,
+    preheader: isFreeEnrollment
+      ? `${SITE_NAME}-এ আপনার free enrollment active হয়েছে`
+      : `${SITE_NAME}-এ আপনার পেমেন্ট সফল হয়েছে`,
+    title: isFreeEnrollment ? 'Enrollment সফল হয়েছে' : 'পেমেন্ট সফল হয়েছে',
+    intro: isFreeEnrollment
+      ? `${customerName}, আপনার free course enrollment confirm হয়েছে। access এখন active হওয়ার কথা।`
+      : `${customerName}, আপনার order confirm হয়েছে। access এখন active হওয়ার কথা।`,
     body: `
       <p style="margin:0 0 18px;font-size:15px;line-height:1.8;color:#374151;">
-        ধন্যবাদ। আপনার payment আমরা successful হিসেবে record করেছি। নিচে order summary দেওয়া হলো।
+        ${isFreeEnrollment
+          ? 'আপনার free course enrollment আমরা successful হিসেবে record করেছি। নিচে access summary দেওয়া হলো।'
+          : 'ধন্যবাদ। আপনার payment আমরা successful হিসেবে record করেছি। নিচে order summary দেওয়া হলো।'}
       </p>
-      ${renderMetaRows([
-        { label: 'Order ID', value: orderId },
-        { label: 'Invoice ID', value: invoiceId },
-        { label: 'Total', value: formatPrice(total) },
-      ])}
+      ${renderMetaRows(customerMetaRows)}
       ${renderOrderItems(items)}
       ${deliveryLinksHtml}
       <p style="margin:24px 0 0;font-size:14px;line-height:1.8;color:#6b7280;">
-        Dashboard-এ ঢুকে আপনার course access, referral panel, এবং purchase history দেখতে পারবেন।
+        ${isFreeEnrollment
+          ? 'Dashboard-এ ঢুকে আপনার course access এবং unlocked links দেখতে পারবেন।'
+          : 'Dashboard-এ ঢুকে আপনার course access, referral panel, এবং purchase history দেখতে পারবেন।'}
       </p>
     `,
     ctaLabel: primaryActionLabel,
     ctaUrl: primaryActionUrl,
   });
   const customerText = [
-    `${SITE_NAME} - payment successful`,
+    isFreeEnrollment
+      ? `${SITE_NAME} - free enrollment successful`
+      : `${SITE_NAME} - payment successful`,
     '',
-    `${customerName}, আপনার order confirm হয়েছে।`,
+    isFreeEnrollment
+      ? `${customerName}, আপনার free course enrollment confirm হয়েছে।`
+      : `${customerName}, আপনার order confirm হয়েছে।`,
     `Order ID: ${orderId}`,
-    `Invoice ID: ${invoiceId}`,
-    `Total: ${formatPrice(total)}`,
+    ...(invoiceId ? [`Invoice ID: ${invoiceId}`] : []),
+    `${isFreeEnrollment ? 'Total paid' : 'Total'}: ${formatPrice(total)}`,
     '',
     'Items:',
     orderLinesText,
@@ -301,20 +324,18 @@ export async function sendOrderConfirmationEmails({
   ].join('\n');
 
   const adminHtml = renderEmailShell({
-    preheader: `New paid order received: ${orderId}`,
-    title: 'নতুন paid order এসেছে',
+    preheader: isFreeEnrollment
+      ? `New free enrollment received: ${orderId}`
+      : `New paid order received: ${orderId}`,
+    title: isFreeEnrollment ? 'নতুন free enrollment এসেছে' : 'নতুন paid order এসেছে',
     intro: `Customer email: ${to}`,
     body: `
       <p style="margin:0 0 18px;font-size:15px;line-height:1.8;color:#374151;">
-        নতুন একটি payment successful হয়েছে।
+        ${isFreeEnrollment
+          ? 'নতুন একটি free enrollment complete হয়েছে।'
+          : 'নতুন একটি payment successful হয়েছে।'}
       </p>
-      ${renderMetaRows([
-        { label: 'Customer', value: customerName },
-        { label: 'Email', value: to },
-        { label: 'Order ID', value: orderId },
-        { label: 'Invoice ID', value: invoiceId },
-        { label: 'Total', value: formatPrice(total) },
-      ])}
+      ${renderMetaRows(adminMetaRows)}
       ${renderOrderItems(items)}
       ${deliveryLinksHtml}
     `,
@@ -322,13 +343,13 @@ export async function sendOrderConfirmationEmails({
     ctaUrl: `${SITE_URL}/dashboard`,
   });
   const adminText = [
-    'New paid order received',
+    isFreeEnrollment ? 'New free enrollment received' : 'New paid order received',
     '',
     `Customer: ${customerName}`,
     `Email: ${to}`,
     `Order ID: ${orderId}`,
-    `Invoice ID: ${invoiceId}`,
-    `Total: ${formatPrice(total)}`,
+    ...(invoiceId ? [`Invoice ID: ${invoiceId}`] : []),
+    `${isFreeEnrollment ? 'Total paid' : 'Total'}: ${formatPrice(total)}`,
     '',
     'Items:',
     orderLinesText,
@@ -338,13 +359,17 @@ export async function sendOrderConfirmationEmails({
   await Promise.all([
     sendEmail({
       to,
-      subject: `${SITE_NAME}: আপনার payment সফল হয়েছে`,
+      subject: isFreeEnrollment
+        ? `${SITE_NAME}: আপনার enrollment active হয়েছে`
+        : `${SITE_NAME}: আপনার payment সফল হয়েছে`,
       html: customerHtml,
       text: customerText,
     }),
     sendEmail({
       to: getMailConfig().from,
-      subject: `${SITE_NAME}: New paid order ${orderId}`,
+      subject: isFreeEnrollment
+        ? `${SITE_NAME}: New free enrollment ${orderId}`
+        : `${SITE_NAME}: New paid order ${orderId}`,
       html: adminHtml,
       text: adminText,
       replyTo: to,

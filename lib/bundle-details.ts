@@ -158,9 +158,11 @@ const BUNDLE_DETAIL_CONTENT: Record<string, BundleDetailContent> = {
   },
   'creator-launch-bundle': {
     overview:
-      'দ্রুত AI-assisted build করা আর ready-made automation template use করে execution speed বাড়াতে চাইলে এই bundle সবচেয়ে practical। Vibe Coding Mastery-এর সাথে n8n template library থাকায় build + automation দুই দিকই একসাথে এগোবে।',
+      'একসাথে Vibe Coding course, Prompt + UI Library, n8n Automation Mastery আর n8n 20K+ Templates নিতে চাইলে এই bundle সবচেয়ে complete creator stack। build skill, prompt system, automation skill আর ready workflow library চারটিই একসাথে পাবেন।',
     deliverables: [
       'Vibe Coding Mastery course access',
+      'Prompt + UI Library access',
+      'n8n Automation Mastery course access',
       'n8n 20K+ Templates access',
       'Lifetime access, কোনো monthly fee নাই',
       'All future updates free',
@@ -168,23 +170,24 @@ const BUNDLE_DETAIL_CONTENT: Record<string, BundleDetailContent> = {
       'Certificate of completion',
     ],
     audience: [
-      'creator বা freelancer যারা দ্রুত build করে delivery দিতে চান',
-      'যারা AI-assisted coding-এর সাথে ready automation resource-ও চান',
-      'launch-ready tool, landing বা workflow stack বানাতে চান এমন learner',
+      'creator বা freelancer যারা build + automation দুই skill একসাথে ধরতে চান',
+      'যারা prompt library, UI block আর ready template library এক bundle-এ চান',
+      'launch-ready tool, landing, workflow বা client delivery stack বানাতে চান এমন learner',
     ],
     workflow: [
-      'প্রথমে vibe coding course দিয়ে build flow শিখুন',
-      'তারপর n8n template library থেকে প্রয়োজনীয় workflow pick করুন',
-      'শেষে build আর automation combine করে নিজের launch-ready system বানান',
+      'প্রথমে Vibe Coding course দিয়ে build workflow ধরুন',
+      'তারপর Prompt + UI Library use করে landing, tool বা dashboard iteration দ্রুত করুন',
+      'এরপর n8n course দিয়ে automation flow শিখুন এবং 20K+ template library থেকে প্রয়োজনীয় workflow pick করুন',
+      'শেষে build + prompt + automation combine করে নিজের launch-ready system বানান',
     ],
     faq: [
       {
-        question: 'এই bundle-এ কি course আর template দুটোই থাকবে?',
-        answer: 'হ্যাঁ, Vibe Coding Mastery course-এর সাথে n8n 20K+ Templates access একসাথে থাকবে।',
+        question: 'এই bundle-এ কি ৪টি item-ই থাকবে?',
+        answer: 'হ্যাঁ, এতে Vibe Coding course, Prompt + UI Library, n8n course এবং n8n 20K+ Templates access একসাথে থাকবে।',
       },
       {
-        question: 'এটি কার জন্য বেশি useful?',
-        answer: 'যারা build + workflow automation stack একসাথে রাখতে চান তাদের জন্য সবচেয়ে useful।',
+        question: 'n8n course আর template library দুটোই কি included?',
+        answer: 'হ্যাঁ, n8n Automation Mastery course-এর সাথে n8n 20K+ Templates দুটোই bundle-এর অংশ।',
       },
       {
         question: 'Lifetime access থাকবে?',
@@ -192,12 +195,12 @@ const BUNDLE_DETAIL_CONTENT: Record<string, BundleDetailContent> = {
       },
     ],
     support:
-      'Course learning flow, template resource access এবং private support direction একসাথে এই bundle-এর মধ্যে থাকবে।',
+      'দুইটা course, Prompt + UI Library, n8n template resource এবং private support direction একসাথে এই bundle-এর মধ্যে থাকবে।',
     facts: [
-      { label: 'মূল কোর্স', value: '১টি' },
-      { label: 'এক্সট্রা', value: '20K+ templates' },
+      { label: 'মূল কোর্স', value: '২টি' },
+      { label: 'এক্সট্রা', value: 'Prompt + UI + 20K+ templates' },
       { label: 'অ্যাক্সেস', value: 'Lifetime' },
-      { label: 'স্টাইল', value: 'Launch-ready' },
+      { label: 'স্ট্যাক', value: 'Full creator' },
     ],
   },
 };

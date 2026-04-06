@@ -11,6 +11,7 @@ export interface BundleItem {
   accessLabel: string;
   highlight: string;
   includedCourseSlugs: string[];
+  includedShopSlugs?: string[];
   featureMetrics: string[];
   tag?: string;
 }
@@ -49,8 +50,8 @@ export const BUNDLE_CATALOG: BundleItem[] = [
     title: 'Vibe Coding + Prompt Library',
     subtitle: 'Vibe coding course-এর সাথে prompt library add-on একসাথে',
     image: BUNDLE_IMAGE_BY_SLUG['vibe-coding-prompt-library'],
-    bundlePrice: 499,
-    originalPrice: 499,
+    bundlePrice: 999,
+    originalPrice: 999,
     accessLabel: 'Lifetime access',
     highlight: 'Course + prompt library combo',
     includedCourseSlugs: ['vibe-coding-mastery'],
@@ -69,8 +70,8 @@ export const BUNDLE_CATALOG: BundleItem[] = [
     title: 'AI Career Duo Bundle',
     subtitle: 'n8n automation আর vibe coding - দুইটা flagship course একসাথে',
     image: BUNDLE_IMAGE_BY_SLUG['ai-career-duo-bundle'] ?? buildCatalogArt('AI Career Duo Bundle', 'bundle', 'Bundle'),
-    bundlePrice: 149,
-    originalPrice: 198,
+    bundlePrice: 499,
+    originalPrice: 499,
     accessLabel: 'Lifetime access',
     highlight: 'Two-course combo',
     includedCourseSlugs: ['n8n-automation-mastery', 'vibe-coding-mastery'],
@@ -87,18 +88,20 @@ export const BUNDLE_CATALOG: BundleItem[] = [
     id: 4,
     slug: 'creator-launch-bundle',
     title: 'Creator Launch Bundle',
-    subtitle: 'Vibe coding course-এর সাথে n8n template library নিয়ে launch-ready combo',
+    subtitle: 'Vibe coding, prompt library, n8n course আর 20K+ template নিয়ে full creator stack',
     image: BUNDLE_IMAGE_BY_SLUG['creator-launch-bundle'] ?? buildCatalogArt('Creator Launch Bundle', 'bundle', 'Bundle'),
-    bundlePrice: 799,
-    originalPrice: 998,
+    bundlePrice: 1299,
+    originalPrice: 1896,
     accessLabel: 'Lifetime access',
-    highlight: 'Course + template stack',
-    includedCourseSlugs: ['vibe-coding-mastery'],
+    highlight: '2 courses + 2 resources',
+    includedCourseSlugs: ['vibe-coding-mastery', 'n8n-automation-mastery'],
+    includedShopSlugs: ['prompt-ui-library', 'n8n-20k-templates'],
     featureMetrics: [
       'Vibe Coding Mastery course included',
+      'Prompt + UI Library included',
+      'n8n Automation Mastery course included',
       'n8n 20K+ Templates access included',
       'Lifetime access, কোনো monthly fee নাই',
-      'All future updates free',
       'Private support group access',
     ],
     tag: 'কম্বো',
@@ -107,3 +110,17 @@ export const BUNDLE_CATALOG: BundleItem[] = [
 
 export const getBundleBySlug = (slug: string) =>
   BUNDLE_CATALOG.find((bundle) => bundle.slug === slug);
+
+export function bundleIncludesCourse(
+  bundle: BundleItem | null | undefined,
+  courseSlug: string,
+) {
+  return Boolean(bundle?.includedCourseSlugs.includes(courseSlug));
+}
+
+export function bundleIncludesShop(
+  bundle: BundleItem | null | undefined,
+  shopSlug: string,
+) {
+  return Boolean(bundle?.includedShopSlugs?.includes(shopSlug));
+}

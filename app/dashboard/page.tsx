@@ -270,7 +270,7 @@ interface DashboardOrderItemRow {
 }
 
 interface DeliveryAccessLink {
-  track: 'n8n' | 'vibe';
+  track: 'n8n' | 'vibe' | 'direct';
   resource: 'course' | 'support' | 'template';
   label: string;
   url: string;
@@ -307,40 +307,70 @@ function extractDeliveryAccessLinks(metadata: unknown) {
 
   const rawMetadata = metadata as Record<string, unknown>;
   const rawDeliveryLinks = rawMetadata.deliveryLinks;
-
-  if (!rawDeliveryLinks || typeof rawDeliveryLinks !== 'object' || Array.isArray(rawDeliveryLinks)) {
-    return [] as DeliveryAccessLink[];
-  }
-
   const output: DeliveryAccessLink[] = [];
-  const deliveryTracks = rawDeliveryLinks as Record<string, unknown>;
 
-  for (const track of ['n8n', 'vibe'] as const) {
-    const trackData = deliveryTracks[track];
+  if (rawDeliveryLinks && typeof rawDeliveryLinks === 'object' && !Array.isArray(rawDeliveryLinks)) {
+    const deliveryTracks = rawDeliveryLinks as Record<string, unknown>;
 
-    if (!trackData || typeof trackData !== 'object' || Array.isArray(trackData)) {
-      continue;
-    }
+    for (const track of ['n8n', 'vibe'] as const) {
+      const trackData = deliveryTracks[track];
 
-    const trackLinks = trackData as Record<string, unknown>;
-
-    for (const resource of ['course', 'support', 'template'] as const) {
-      const url = trackLinks[resource];
-
-      if (typeof url !== 'string' || !url) {
+      if (!trackData || typeof trackData !== 'object' || Array.isArray(trackData)) {
         continue;
       }
 
-      const prefix = track === 'vibe' ? 'Vibe Coding' : 'n8n Automation';
-      const label =
-        resource === 'course'
-          ? `${prefix} Telegram channel`
-          : resource === 'support'
-            ? `${prefix} support group`
-            : `${prefix} resource library`;
+      const trackLinks = trackData as Record<string, unknown>;
+
+      for (const resource of ['course', 'support', 'template'] as const) {
+        const url = trackLinks[resource];
+
+        if (typeof url !== 'string' || !url) {
+          continue;
+        }
+
+        const prefix = track === 'vibe' ? 'Vibe Coding' : 'n8n Automation';
+        const label =
+          resource === 'course'
+            ? `${prefix} Telegram channel`
+            : resource === 'support'
+              ? `${prefix} support group`
+              : `${prefix} resource library`;
+
+        output.push({
+          track,
+          resource,
+          label,
+          url,
+        });
+      }
+    }
+  }
+
+  const rawCustomDeliveryLinks = rawMetadata.customDeliveryLinks;
+
+  if (Array.isArray(rawCustomDeliveryLinks)) {
+    for (const entry of rawCustomDeliveryLinks) {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+        continue;
+      }
+
+      const customLink = entry as Record<string, unknown>;
+      const resource = customLink.resource;
+      const label = customLink.label;
+      const url = customLink.url;
+
+      if (
+        (resource !== 'course' && resource !== 'support' && resource !== 'template') ||
+        typeof label !== 'string' ||
+        !label ||
+        typeof url !== 'string' ||
+        !url
+      ) {
+        continue;
+      }
 
       output.push({
-        track,
+        track: 'direct',
         resource,
         label,
         url,
@@ -534,6 +564,10 @@ export default function DashboardPage() {
               ownedCourses.add(courseSlug);
             }
 
+            for (const productSlug of bundle?.includedShopSlugs ?? []) {
+              productSlugs.add(productSlug);
+            }
+
             continue;
           }
 
@@ -562,6 +596,10 @@ export default function DashboardPage() {
 
             for (const courseSlug of bundle?.includedCourseSlugs ?? []) {
               ownedCourses.add(courseSlug);
+            }
+
+            for (const productSlug of bundle?.includedShopSlugs ?? []) {
+              productSlugs.add(productSlug);
             }
 
             continue;
