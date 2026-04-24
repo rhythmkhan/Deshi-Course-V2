@@ -63,7 +63,7 @@ export async function updateSession(request: NextRequest) {
 
     if (ipAddress && ipAddress !== 'unknown') {
       const ipCheck = await supabase.rpc('is_ip_blocked', {
-        candidate_ip: ipAddress,
+        input_ip: ipAddress,
       });
 
       if (ipCheck.data === true) {

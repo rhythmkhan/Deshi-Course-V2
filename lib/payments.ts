@@ -7,6 +7,7 @@ import {
 } from '@/lib/coupons';
 import { processPendingDeliveryJobs, enqueueDeliveryJobsForEntitlement } from '@/lib/delivery';
 import { grantEntitlementsForOrder } from '@/lib/entitlements';
+import { getPublishedCourseBySlug } from '@/lib/content-store';
 import { getCourseCardBySlug } from '@/lib/course-details';
 import { sendAdminOrderLifecycleEmail, sendOrderConfirmationEmails } from '@/lib/email';
 import { appendSuccessfulOrderRow } from '@/lib/google-sheets';
@@ -99,6 +100,16 @@ interface AdminPendingOrderNotificationInput {
     type: 'course' | 'bundle' | 'shop';
     price: number;
   }>;
+}
+
+async function resolveCheckoutCourseBySlug(slug: string) {
+  const publishedCourse = await getPublishedCourseBySlug(slug);
+
+  if (publishedCourse) {
+    return publishedCourse;
+  }
+
+  return getCourseCardBySlug(slug) ?? null;
 }
 
 function encodeCartOrderItems(items: CartCatalogItem[]) {
@@ -857,7 +868,7 @@ async function finalizeVerifiedOrder(params: {
 export async function createPendingOrder(courseSlug: string, couponCode?: string) {
   const { supabase, user, profile } = await getAuthenticatedUserWithProfile();
 
-  const course = getCourseCardBySlug(courseSlug);
+  const course = await resolveCheckoutCourseBySlug(courseSlug);
 
   if (!course) {
     throw new Error('Course not found');
@@ -906,6 +917,12 @@ export async function createPendingOrder(courseSlug: string, couponCode?: string
   });
 
   if (error) {
+    console.error('Order insert failed', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
     throw new Error('Could not create order');
   }
 
@@ -935,7 +952,7 @@ export async function createPendingOrder(courseSlug: string, couponCode?: string
 export async function createFreeCourseEnrollment(courseSlug: string) {
   const { supabase, user } = await getAuthenticatedUserWithProfile();
 
-  const course = getCourseCardBySlug(courseSlug);
+  const course = await resolveCheckoutCourseBySlug(courseSlug);
 
   if (!course) {
     throw new Error('Course not found');
@@ -981,6 +998,12 @@ export async function createFreeCourseEnrollment(courseSlug: string) {
   });
 
   if (orderError) {
+    console.error('Free enrollment order insert failed', {
+      code: orderError.code,
+      message: orderError.message,
+      details: orderError.details,
+      hint: orderError.hint,
+    });
     throw new Error('Free enrollment order create করা যায়নি।');
   }
 
@@ -1082,6 +1105,12 @@ export async function createPendingCartOrder(items: CartItemInput[], couponCode?
   });
 
   if (error) {
+    console.error('Cart order insert failed', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
     throw new Error('Could not create cart order');
   }
 
@@ -1455,4 +1484,22 @@ export async function finalizePipraPayOrder(orderId: string, ppId: string) {
     resolvedValId: resolvedValId || null,
     resolvedTransactionId: resolvedTransactionId || null,
   });
+}
+
+export async function finalizePipraPayOrderFromRedirect(orderId: string, ppId?: string) {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from('orders')
+    .select('payment_status, provider_invoice_id')
+    .eq('id', orderId)
+    .maybeSingle();
+
+  const order = data as { payment_status?: string | null; provider_invoice_id?: string | null } | null;
+  const resolvedPpId = ppId || order?.provider_invoice_id || '';
+
+  if (!resolvedPpId && order?.payment_status !== 'paid') {
+    return { ok: false, message: 'Payment info পাওয়া যায়নি।' };
+  }
+
+  return finalizePipraPayOrder(orderId, resolvedPpId);
 }
