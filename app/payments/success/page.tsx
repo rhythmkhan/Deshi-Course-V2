@@ -6,7 +6,7 @@ import MetaPurchaseTracker from '@/components/MetaPurchaseTracker';
 import Footer from '@/components/Footer';
 import PaymentSuccessCartSync from '@/components/PaymentSuccessCartSync';
 import { classifyPaymentStatus } from '@/lib/piprapay';
-import { finalizePipraPayOrder } from '@/lib/payments';
+import { finalizePipraPayOrderFromRedirect } from '@/lib/payments';
 
 interface PaymentResult {
   ok: boolean;
@@ -49,8 +49,8 @@ export default async function PaymentSuccessPage({ searchParams }: PaymentSucces
   }
 
   const result: PaymentResult =
-    orderId && ppId
-      ? await finalizePipraPayOrder(orderId, ppId)
+    orderId
+      ? await finalizePipraPayOrderFromRedirect(orderId, ppId)
       : { ok: false, message: 'Payment info পাওয়া যায়নি।' };
 
   if (
