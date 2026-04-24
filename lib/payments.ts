@@ -1,10 +1,12 @@
 import { getBundleBySlug } from '@/lib/bundle-catalog';
 import { getCartPricingPreview, resolveCartItems, type CartCatalogItem, type CartItemInput } from '@/lib/cart';
 import {
-  redeemCouponForOrder,
+  redeemCouponForVerifiedOrder,
   resolveCouponForCheckout,
   type CouponPricingRule,
 } from '@/lib/coupons';
+import { processPendingDeliveryJobs, enqueueDeliveryJobsForEntitlement } from '@/lib/delivery';
+import { grantEntitlementsForOrder } from '@/lib/entitlements';
 import { getCourseCardBySlug } from '@/lib/course-details';
 import { sendAdminOrderLifecycleEmail, sendOrderConfirmationEmails } from '@/lib/email';
 import { appendSuccessfulOrderRow } from '@/lib/google-sheets';
@@ -18,7 +20,14 @@ import {
 import { getPricingPreview } from '@/lib/referral';
 import { SITE_URL } from '@/lib/site-url';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isMissingColumnError, isMissingRelationError } from '@/lib/supabase/errors';
 import { createClient } from '@/lib/supabase/server';
+import {
+  extractPipraPayId,
+  extractPipraPayTransactionId,
+  isPipraPayCompleted,
+  verifyPipraPayPayment,
+} from '@/lib/piprapay';
 import {
   extractZiniPayInvoiceId,
   extractZiniPayTransactionId,
@@ -33,6 +42,7 @@ interface OrderRow {
   user_id: string;
   course_slug: string;
   payment_status: string;
+  fulfillment_status?: string | null;
   amount?: number | string | null;
   final_amount?: number | string | null;
   original_amount?: number | string | null;
@@ -320,6 +330,15 @@ function buildEnrollmentCourses(order: OrderRow, orderItems: OrderItemRow[]) {
   );
 }
 
+function isModernFulfillmentSchemaMissing(error: unknown) {
+  return (
+    isMissingRelationError(error, 'user_entitlements') ||
+    isMissingRelationError(error, 'delivery_jobs') ||
+    isMissingRelationError(error, 'delivery_rules') ||
+    isMissingRelationError(error, 'delivery_attempts')
+  );
+}
+
 export async function notifyAdminPendingOrderCreated({
   orderId,
   customerName,
@@ -386,26 +405,6 @@ async function getCheckoutCoupon(params: {
   return couponResult.coupon;
 }
 
-async function redeemSingleUseCouponForOrder(params: {
-  supabase: Awaited<ReturnType<typeof createClient>>;
-  orderId: string;
-  coupon: CouponPricingRule | null;
-}) {
-  if (!params.coupon?.singleUse) {
-    return;
-  }
-
-  try {
-    await redeemCouponForOrder({
-      code: params.coupon.code,
-      orderId: params.orderId,
-    });
-  } catch (error) {
-    await params.supabase.from('orders').delete().eq('id', params.orderId);
-    throw new Error(error instanceof Error ? error.message : 'Coupon redeem failed');
-  }
-}
-
 function buildCouponSnapshot(coupon: CouponPricingRule | null, couponDiscount: number) {
   if (!coupon || couponDiscount <= 0) {
     return null;
@@ -427,476 +426,159 @@ function buildCouponSnapshot(coupon: CouponPricingRule | null, couponDiscount: n
   };
 }
 
-export async function createPendingOrder(courseSlug: string, couponCode?: string) {
-  const { supabase, user, profile } = await getAuthenticatedUserWithProfile();
-
-  const course = getCourseCardBySlug(courseSlug);
-
-  if (!course) {
-    throw new Error('Course not found');
-  }
-
-  const basePricing = getPricingPreview(
-    course.price,
-    Number(profile?.wallet_balance ?? 0),
-    Number(profile?.welcome_discount_uses_remaining ?? 0),
-  );
-  const coupon = await getCheckoutCoupon({
-    couponCode,
-    items: [{ type: 'course', slug: course.slug, effectivePrice: course.price }],
-    referralDiscount: basePricing.referralDiscount,
-    userId: user.id,
-  });
-  const pricing = getPricingPreview(
-    course.price,
-    Number(profile?.wallet_balance ?? 0),
-    Number(profile?.welcome_discount_uses_remaining ?? 0),
-    coupon,
-  );
-
-  const orderId = crypto.randomUUID();
-  const { error } = await supabase.from('orders').insert({
-    id: orderId,
-    user_id: user.id,
-    course_slug: course.slug,
-    amount: pricing.finalPrice,
-    original_amount: pricing.listPrice,
-    referral_discount_amount: pricing.referralDiscount,
-    coupon_code: pricing.appliedCoupon?.code ?? null,
-    coupon_discount_amount: pricing.couponDiscount,
-    coupon_snapshot: buildCouponSnapshot(coupon, pricing.couponDiscount),
-    wallet_discount_amount: pricing.walletDiscount,
-    final_amount: pricing.finalPrice,
-    currency: 'BDT',
-    payment_status: 'pending',
-    payment_provider: 'zinipay',
-    metadata: {
-      checkoutSource: 'course',
-      purchasedItems: [`course:${course.slug}`],
-      coupon: buildCouponSnapshot(coupon, pricing.couponDiscount),
-    },
-  });
-
-  if (error) {
-    throw new Error('Could not create order');
-  }
-
-  await redeemSingleUseCouponForOrder({
-    supabase,
-    orderId,
-    coupon,
-  });
-
-  return {
-    orderId,
-    user,
-    course,
-    pricing,
-    customerName: getCustomerName(user),
-    customerEmail: getCustomerEmail(user),
-  };
-}
-
-export async function createFreeCourseEnrollment(courseSlug: string) {
-  const { supabase, user } = await getAuthenticatedUserWithProfile();
-
-  const course = getCourseCardBySlug(courseSlug);
-
-  if (!course) {
-    throw new Error('Course not found');
-  }
-
-  if (course.price !== 0) {
-    throw new Error('এই courseটি free নয়।');
-  }
-
-  const existingOwnership = await supabase
-    .from('enrollments')
-    .select('course_slug')
-    .eq('user_id', user.id)
-    .eq('course_slug', course.slug)
-    .in('enrollment_status', ['active', 'completed', 'pending'])
-    .limit(1);
-
-  if (((existingOwnership.data as Array<{ course_slug: string }> | null) ?? []).length > 0) {
-    return { alreadyOwned: true };
-  }
-
-  const orderId = crypto.randomUUID();
-  const orderMetadata = {
-    checkoutSource: 'free-course',
-    purchasedItems: [`course:${course.slug}`],
-  };
-  const { error: orderError } = await supabase.from('orders').insert({
-    id: orderId,
-    user_id: user.id,
-    course_slug: course.slug,
-    amount: 0,
-    original_amount: 0,
-    referral_discount_amount: 0,
-    coupon_code: null,
-    coupon_discount_amount: 0,
-    wallet_discount_amount: 0,
-    final_amount: 0,
-    currency: 'BDT',
-    payment_status: 'paid',
-    payment_provider: 'free',
-    paid_at: new Date().toISOString(),
-    metadata: orderMetadata,
-  });
-
-  if (orderError) {
-    throw new Error('Free enrollment order create করা যায়নি।');
-  }
-
-  const { error: enrollmentError } = await supabase.from('enrollments').upsert(
-    {
-      user_id: user.id,
-      course_slug: course.slug,
-      course_title: course.title,
-      enrollment_status: 'active',
-      progress: 0,
-    },
-    { onConflict: 'user_id,course_slug' },
-  );
-
-  if (enrollmentError) {
-    throw new Error('Course enrollment create করা যায়নি।');
-  }
-
-  const deliveryResult = await ensureTelegramDeliveryLinks({
-    orderId,
-    items: [
-      {
-        itemType: 'course',
-        slug: course.slug,
-        title: course.title,
-      },
-    ],
-    metadata: orderMetadata,
-  });
-
-  if (deliveryResult.errors.length > 0) {
-    console.error('Free course delivery link prepare failed', deliveryResult.errors.join(' | '));
-  }
-
-  let nextMetadata = buildOrderMetadata(deliveryResult.metadata);
-  let metadataDirty = deliveryResult.changed;
-  const emailFlags = nextMetadata.emailFlags as Record<string, unknown>;
-
-  if (user.email && emailFlags.success !== true) {
-    try {
-      await sendOrderConfirmationEmails({
-        to: user.email,
-        fullName: getCustomerName(user),
-        orderId,
-        items: [
-          {
-            title: course.title,
-            type: 'course',
-            price: 0,
-          },
-        ],
-        total: 0,
-        courseUrl: `${SITE_URL}/courses/${course.slug}`,
-        deliveryLinks: deliveryResult.links.map((link) => ({
-          label: link.label,
-          url: link.url,
-        })),
-        status: 'free-enrollment',
-      });
-
-      nextMetadata = {
-        ...nextMetadata,
-        emailFlags: {
-          ...emailFlags,
-          success: true,
-        },
-        successEmailSentAt: Date.now(),
-      };
-      metadataDirty = true;
-    } catch (error) {
-      console.error('Free enrollment email failed', error);
-    }
-  }
-
-  if (metadataDirty) {
-    await supabase
-      .from('orders')
-      .update({ metadata: nextMetadata })
-      .eq('id', orderId);
-  }
-
-  return { alreadyOwned: false };
-}
-
-function buildCartOrderSlug(items: CartCatalogItem[]) {
-  return encodeCartOrderItems(items);
-}
-
-export async function createPendingCartOrder(items: CartItemInput[], couponCode?: string) {
-  const { supabase, user, profile } = await getAuthenticatedUserWithProfile();
-
-  const checkoutItems = resolveCartItems(items);
-
-  if (!checkoutItems.length) {
-    throw new Error('কার্টে valid item পাওয়া যায়নি।');
-  }
-
-  const basePricing = getCartPricingPreview(
-    checkoutItems,
-    Number(profile?.wallet_balance ?? 0),
-    Number(profile?.welcome_discount_uses_remaining ?? 0),
-  );
-  const coupon = await getCheckoutCoupon({
-    couponCode,
-    items: basePricing.pricedItems.map((item) => ({
-      type: item.type,
-      slug: item.slug,
-      effectivePrice: item.effectivePrice,
-    })),
-    referralDiscount: basePricing.referralDiscount,
-    userId: user.id,
-  });
-  const pricing = getCartPricingPreview(
-    checkoutItems,
-    Number(profile?.wallet_balance ?? 0),
-    Number(profile?.welcome_discount_uses_remaining ?? 0),
-    coupon,
-  );
-
-  const orderId = crypto.randomUUID();
-  const { error } = await supabase.from('orders').insert({
-    id: orderId,
-    user_id: user.id,
-    course_slug: buildCartOrderSlug(checkoutItems),
-    amount: pricing.finalPrice,
-    original_amount: pricing.originalSubtotal,
-    referral_discount_amount: pricing.referralDiscount,
-    coupon_code: pricing.appliedCoupon?.code ?? null,
-    coupon_discount_amount: pricing.couponDiscount,
-    coupon_snapshot: buildCouponSnapshot(coupon, pricing.couponDiscount),
-    wallet_discount_amount: pricing.walletDiscount,
-    final_amount: pricing.finalPrice,
-    currency: 'BDT',
-    payment_status: 'pending',
-    payment_provider: 'zinipay',
-    metadata: {
-      checkoutSource: 'cart',
-      purchasedItems: checkoutItems.map((item) => `${item.type}:${item.slug}`),
-      coupon: buildCouponSnapshot(coupon, pricing.couponDiscount),
-    },
-  });
-
-  if (error) {
-    throw new Error('Could not create cart order');
-  }
-
-  const { error: orderItemsError } = await supabase.from('order_items').insert(
-    pricing.pricedItems.map((item) => ({
-      order_id: orderId,
-      item_type: item.type,
-      item_slug: item.slug,
-      item_title: item.title,
-      unit_price: item.effectivePrice,
-      original_price: item.originalPrice,
-      quantity: 1,
-    })),
-  );
-
-  if (orderItemsError) {
-    await supabase.from('orders').delete().eq('id', orderId);
-    throw new Error('Could not create cart order items');
-  }
-
-  await redeemSingleUseCouponForOrder({
-    supabase,
-    orderId,
-    coupon,
-  });
-
-  return {
-    orderId,
-    user,
-    items: checkoutItems,
-    pricing,
-    customerName: getCustomerName(user),
-    customerEmail: getCustomerEmail(user),
-  };
-}
-
-export async function attachOrderPaymentUrl(orderId: string, paymentUrl: string) {
+async function recordOrderEvent(input: {
+  orderId: string;
+  eventType: string;
+  summary: string;
+  actorType?: 'system' | 'user' | 'admin' | 'gateway' | 'cron';
+  actorId?: string | null;
+  details?: Record<string, unknown>;
+}) {
   const supabase = createAdminClient();
+  const { error } = await supabase.from('order_events').insert({
+    order_id: input.orderId,
+    event_type: input.eventType,
+    actor_type: input.actorType ?? 'system',
+    actor_id: input.actorId ?? null,
+    summary: input.summary,
+    details: input.details ?? {},
+  });
+
+  if (error && !isMissingRelationError(error, 'order_events')) {
+    throw new Error(error.message);
+  }
+}
+
+async function recordPaymentTransaction(input: {
+  orderId: string;
+  provider: string;
+  status: string;
+  amount?: number | null;
+  currency?: string | null;
+  providerInvoiceId?: string | null;
+  providerValId?: string | null;
+  providerTransactionId?: string | null;
+  payload?: Record<string, unknown>;
+  verificationSource: 'checkout' | 'success_redirect' | 'webhook' | 'manual' | 'unknown';
+}) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from('payment_transactions').insert({
+    order_id: input.orderId,
+    provider: input.provider,
+    status: input.status,
+    amount: input.amount ?? null,
+    currency: input.currency ?? null,
+    provider_invoice_id: input.providerInvoiceId ?? null,
+    provider_val_id: input.providerValId ?? null,
+    provider_transaction_id: input.providerTransactionId ?? null,
+    payload: input.payload ?? {},
+    verification_source: input.verificationSource,
+  });
+
+  if (error && !isMissingRelationError(error, 'payment_transactions')) {
+    throw new Error(error.message);
+  }
+}
+
+async function tryClaimOrderFulfillment(orderId: string) {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from('orders')
+    .update({
+      fulfillment_status: 'processing',
+      fulfillment_started_at: new Date().toISOString(),
+    })
+    .eq('id', orderId)
+    .in('fulfillment_status', ['pending', 'needs_retry'])
+    .select('id')
+    .maybeSingle();
+
+  if (
+    error &&
+    !isMissingColumnError(error, 'fulfillment_status')
+  ) {
+    throw new Error(error.message);
+  }
+
+  if (isMissingColumnError(error, 'fulfillment_status')) {
+    return true;
+  }
+
+  return Boolean(data?.id);
+}
+
+async function setOrderFulfillmentState(
+  orderId: string,
+  state: 'pending' | 'processing' | 'fulfilled' | 'needs_retry',
+) {
+  const supabase = createAdminClient();
+  const payload: Record<string, unknown> = {
+    fulfillment_status: state,
+  };
+
+  if (state === 'fulfilled') {
+    payload.fulfilled_at = new Date().toISOString();
+  }
+
   const { error } = await supabase
     .from('orders')
-    .update({ payment_url: paymentUrl })
+    .update(payload)
     .eq('id', orderId);
 
-  if (error) {
-    throw new Error('Payment URL save করা যায়নি।');
+  if (error && !isMissingColumnError(error, 'fulfillment_status')) {
+    throw new Error(error.message);
   }
 }
 
-export async function markOrderCancelled(orderId: string) {
+async function finalizeVerifiedOrder(params: {
+  order: OrderRow;
+  provider: string;
+  verificationPayload: Record<string, unknown>;
+  wasAlreadyPaid: boolean;
+  justMarkedPaid: boolean;
+  resolvedInvoiceId: string;
+  resolvedValId?: string | null;
+  resolvedTransactionId?: string | null;
+}) {
+  const {
+    order,
+    provider,
+    verificationPayload,
+    wasAlreadyPaid,
+    justMarkedPaid,
+    resolvedInvoiceId,
+    resolvedValId,
+    resolvedTransactionId,
+  } = params;
   const supabase = createAdminClient();
-  const { data: orderData } = await supabase
-    .from('orders')
-    .select(
-      'id, user_id, course_slug, payment_status, amount, final_amount, original_amount, currency, wallet_discount_amount, referral_discount_amount, provider_invoice_id, provider_val_id, provider_transaction_id, payment_url, metadata, created_at, paid_at',
-    )
-    .eq('id', orderId)
-    .single();
 
-  const order = orderData as OrderRow | null;
+  await recordPaymentTransaction({
+    orderId: order.id,
+    provider,
+    status: 'paid',
+    amount: toNumber(order.final_amount ?? order.amount),
+    currency: order.currency ?? 'BDT',
+    providerInvoiceId: resolvedInvoiceId,
+    providerValId: resolvedValId || null,
+    providerTransactionId: resolvedTransactionId || null,
+    payload: verificationPayload,
+    verificationSource: 'unknown',
+  });
 
-  if (!order) {
-    return { ok: false, message: 'Order পাওয়া যায়নি।' };
-  }
-
-  if (order.payment_status === 'paid') {
-    return { ok: false, message: 'এই order-এর payment already successful।' };
-  }
-
-  const { data: storedOrderItems } = await supabase
-    .from('order_items')
-    .select('item_type, item_slug, item_title, unit_price, original_price')
-    .eq('order_id', order.id);
-
-  const orderItems = ((storedOrderItems as OrderItemRow[] | null) ?? []);
-  const purchaseTracking = buildPurchaseTrackingDetails(order, orderItems);
-  let nextMetadata = buildOrderMetadata(getOrderMetadata(order.metadata));
-  let metadataDirty = false;
-  const emailFlags = nextMetadata.emailFlags as Record<string, unknown>;
-
-  const { data: profileData } = await supabase
-    .from('profiles')
-    .select('full_name, email, phone')
-    .eq('id', order.user_id)
-    .single();
-
-  const profile = (profileData as ProfileRow | null) ?? null;
-
-  if (emailFlags.cancelledAdmin !== true) {
-    try {
-      await sendAdminOrderLifecycleEmail({
-        status: 'cancelled',
-        orderId: order.id,
-        buyerName:
-          typeof profile?.full_name === 'string' ? profile.full_name : undefined,
-        buyerEmail: typeof profile?.email === 'string' ? profile.email : undefined,
-        buyerPhone: typeof profile?.phone === 'string' ? profile.phone : undefined,
-        invoiceId: order.provider_invoice_id || undefined,
-        total: Number(purchaseTracking.purchaseCustomData.value ?? 0),
-        paymentUrl: order.payment_url || undefined,
-        items: purchaseTracking.trackedItems.map((item) => ({
-          title: item.title,
-          type: item.itemType,
-          price: item.price,
-        })),
-      });
-
-      nextMetadata = {
-        ...nextMetadata,
-        emailFlags: {
-          ...emailFlags,
-          cancelledAdmin: true,
-        },
-        cancelledEmailSentAt: Date.now(),
-      };
-      metadataDirty = true;
-    } catch (error) {
-      console.error('Order cancel email failed', error);
-    }
-  }
-
-  const updatePayload: Record<string, unknown> = {};
-
-  if (order.payment_status !== 'failed') {
-    updatePayload.payment_status = 'failed';
-  }
-
-  if (metadataDirty) {
-    updatePayload.metadata = nextMetadata;
-  }
-
-  if (Object.keys(updatePayload).length > 0) {
-    await supabase.from('orders').update(updatePayload).eq('id', order.id);
-  }
-
-  return { ok: true, message: 'Payment cancel status record হয়েছে।' };
-}
-
-export async function finalizeZiniPayOrder(orderId: string, invoiceId: string) {
-  const supabase = createAdminClient();
-  const { data: initialOrderData } = await supabase
-    .from('orders')
-    .select(
-      'id, user_id, course_slug, payment_status, amount, final_amount, original_amount, currency, wallet_discount_amount, referral_discount_amount, provider_invoice_id, provider_val_id, provider_transaction_id, payment_url, metadata, created_at, paid_at',
-    )
-    .eq('id', orderId)
-    .single();
-
-  let order = initialOrderData as OrderRow | null;
-
-  if (!order) {
-    return { ok: false, message: 'Order পাওয়া যায়নি।' };
-  }
-
-  const wasAlreadyPaid = order.payment_status === 'paid';
-  let resolvedInvoiceId = order.provider_invoice_id || invoiceId;
-  let resolvedValId = order.provider_val_id || resolvedInvoiceId;
-  let resolvedTransactionId = order.provider_transaction_id || '';
-  let justMarkedPaid = false;
-
-  if (!wasAlreadyPaid) {
-    const verification = await verifyZiniPayPayment({ invoiceId });
-
-    if (!isZiniPayCompleted(verification)) {
-      return { ok: false, message: 'Payment এখনও completed হয়নি।' };
-    }
-
-    resolvedInvoiceId = extractZiniPayInvoiceId(verification) || invoiceId;
-    resolvedValId = extractZiniPayValId(verification) || resolvedInvoiceId;
-    resolvedTransactionId = extractZiniPayTransactionId(verification);
-
-    const { data: updatedOrder, error: orderUpdateError } = await supabase
-      .from('orders')
-      .update({
-        payment_status: 'paid',
-        provider_invoice_id: resolvedInvoiceId,
-        provider_val_id: resolvedValId || null,
-        provider_transaction_id: resolvedTransactionId || null,
-        paid_at: new Date().toISOString(),
-      })
-      .eq('id', order.id)
-      .neq('payment_status', 'paid')
-      .select(
-        'id, user_id, course_slug, payment_status, amount, final_amount, original_amount, currency, wallet_discount_amount, referral_discount_amount, provider_invoice_id, provider_val_id, provider_transaction_id, payment_url, metadata, created_at, paid_at',
-      )
-      .maybeSingle();
-
-    if (orderUpdateError) {
-      return { ok: false, message: 'Order update করা যায়নি।' };
-    }
-
-    if (updatedOrder) {
-      order = updatedOrder as OrderRow;
-      justMarkedPaid = true;
-    } else {
-      const { data: refreshedOrder } = await supabase
-        .from('orders')
-        .select(
-          'id, user_id, course_slug, payment_status, amount, final_amount, original_amount, currency, wallet_discount_amount, referral_discount_amount, provider_invoice_id, provider_val_id, provider_transaction_id, payment_url, metadata, created_at, paid_at',
-        )
-        .eq('id', order.id)
-        .single();
-
-      order = (refreshedOrder as OrderRow | null) ?? order;
-      resolvedInvoiceId = order.provider_invoice_id || resolvedInvoiceId;
-      resolvedValId = order.provider_val_id || resolvedValId;
-      resolvedTransactionId = order.provider_transaction_id || resolvedTransactionId;
-    }
-  }
+  await recordOrderEvent({
+    orderId: order.id,
+    eventType: wasAlreadyPaid ? 'payment_reconfirmed' : 'payment_verified',
+    actorType: 'gateway',
+    summary: wasAlreadyPaid
+      ? 'Payment verification re-confirmed'
+      : 'Payment verified and order marked paid',
+    details: {
+      invoiceId: resolvedInvoiceId,
+      valId: resolvedValId || null,
+      transactionId: resolvedTransactionId || null,
+      provider,
+    },
+  });
 
   const { data: storedOrderItems, error: orderItemsError } = await supabase
     .from('order_items')
@@ -919,34 +601,92 @@ export async function finalizeZiniPayOrder(orderId: string, invoiceId: string) {
 
   const profile = (profileData as ProfileRow | null) ?? null;
 
-  if (justMarkedPaid) {
-    const walletDiscount = toNumber(order.wallet_discount_amount);
-    const referralDiscount = toNumber(order.referral_discount_amount);
+  const shouldRunFulfillment = await tryClaimOrderFulfillment(order.id);
 
-    await supabase
-      .from('profiles')
-      .update({
-        wallet_balance: Math.max(toNumber(profile?.wallet_balance) - walletDiscount, 0),
-        welcome_discount_uses_remaining:
-          referralDiscount > 0
-            ? Math.max(Number(profile?.welcome_discount_uses_remaining ?? 0) - 1, 0)
-            : Number(profile?.welcome_discount_uses_remaining ?? 0),
-      })
-      .eq('id', order.user_id);
+  if (shouldRunFulfillment) {
+    try {
+      if (justMarkedPaid) {
+        const walletDiscount = toNumber(order.wallet_discount_amount);
+        const referralDiscount = toNumber(order.referral_discount_amount);
 
-    const enrolledCourses = buildEnrollmentCourses(order, orderItems);
+        await supabase
+          .from('profiles')
+          .update({
+            wallet_balance: Math.max(toNumber(profile?.wallet_balance) - walletDiscount, 0),
+            welcome_discount_uses_remaining:
+              referralDiscount > 0
+                ? Math.max(Number(profile?.welcome_discount_uses_remaining ?? 0) - 1, 0)
+                : Number(profile?.welcome_discount_uses_remaining ?? 0),
+          })
+          .eq('id', order.user_id);
+      }
 
-    if (enrolledCourses.length > 0) {
-      await supabase.from('enrollments').upsert(
-        enrolledCourses.map((course) => ({
-          user_id: order.user_id,
-          course_slug: course.slug,
-          course_title: course.title,
-          enrollment_status: 'active',
-          progress: 0,
-        })),
-        { onConflict: 'user_id,course_slug' },
-      );
+      if (order.coupon_code) {
+        await redeemCouponForVerifiedOrder({
+          code: order.coupon_code,
+          orderId: order.id,
+          userId: order.user_id,
+          discountAmount: toNumber(order.coupon_discount_amount),
+        });
+      }
+
+      let entitlementCount = 0;
+
+      try {
+        const entitlements = await grantEntitlementsForOrder(order.id);
+        entitlementCount = entitlements.length;
+        await Promise.all(
+          entitlements.map((entitlement) => enqueueDeliveryJobsForEntitlement(entitlement.id)),
+        );
+        await processPendingDeliveryJobs(20);
+      } catch (error) {
+        if (!isModernFulfillmentSchemaMissing(error)) {
+          throw error;
+        }
+
+        const enrolledCourses = buildEnrollmentCourses(order, orderItems);
+
+        if (enrolledCourses.length > 0) {
+          await supabase.from('enrollments').upsert(
+            enrolledCourses.map((course) => ({
+              user_id: order.user_id,
+              course_slug: course.slug,
+              course_title: course.title,
+              enrollment_status: 'active',
+              progress: 0,
+            })),
+            { onConflict: 'user_id,course_slug' },
+          );
+        }
+      }
+
+      await setOrderFulfillmentState(order.id, 'fulfilled');
+      await recordOrderEvent({
+        orderId: order.id,
+        eventType: 'fulfillment_completed',
+        actorType: 'system',
+        summary: 'Order fulfillment completed',
+        details: {
+          entitlementCount,
+        },
+      });
+    } catch (error) {
+      await setOrderFulfillmentState(order.id, 'needs_retry');
+      await recordOrderEvent({
+        orderId: order.id,
+        eventType: 'fulfillment_failed',
+        actorType: 'system',
+        summary: 'Order fulfillment failed',
+        details: {
+          error: error instanceof Error ? error.message : 'Unknown fulfillment error',
+        },
+      });
+
+      return {
+        ok: false,
+        message:
+          error instanceof Error ? error.message : 'Fulfillment failed',
+      };
     }
   }
 
@@ -1112,4 +852,607 @@ export async function finalizeZiniPayOrder(orderId: string, invoiceId: string) {
     metaPurchasePath: purchaseTracking.purchasePath,
     metaPurchaseCustomData: purchaseTracking.purchaseCustomData,
   };
+}
+
+export async function createPendingOrder(courseSlug: string, couponCode?: string) {
+  const { supabase, user, profile } = await getAuthenticatedUserWithProfile();
+
+  const course = getCourseCardBySlug(courseSlug);
+
+  if (!course) {
+    throw new Error('Course not found');
+  }
+
+  const basePricing = getPricingPreview(
+    course.price,
+    Number(profile?.wallet_balance ?? 0),
+    Number(profile?.welcome_discount_uses_remaining ?? 0),
+  );
+  const coupon = await getCheckoutCoupon({
+    couponCode,
+    items: [{ type: 'course', slug: course.slug, effectivePrice: course.price }],
+    referralDiscount: basePricing.referralDiscount,
+    userId: user.id,
+  });
+  const pricing = getPricingPreview(
+    course.price,
+    Number(profile?.wallet_balance ?? 0),
+    Number(profile?.welcome_discount_uses_remaining ?? 0),
+    coupon,
+  );
+
+  const orderId = crypto.randomUUID();
+  const { error } = await supabase.from('orders').insert({
+    id: orderId,
+    user_id: user.id,
+    course_slug: course.slug,
+    amount: pricing.finalPrice,
+    original_amount: pricing.listPrice,
+    referral_discount_amount: pricing.referralDiscount,
+    coupon_code: pricing.appliedCoupon?.code ?? null,
+    coupon_discount_amount: pricing.couponDiscount,
+    coupon_snapshot: buildCouponSnapshot(coupon, pricing.couponDiscount),
+    wallet_discount_amount: pricing.walletDiscount,
+    final_amount: pricing.finalPrice,
+    currency: 'BDT',
+    payment_status: 'pending',
+    payment_provider: 'piprapay',
+    checkout_source: 'course',
+    metadata: {
+      checkoutSource: 'course',
+      purchasedItems: [`course:${course.slug}`],
+      coupon: buildCouponSnapshot(coupon, pricing.couponDiscount),
+    },
+  });
+
+  if (error) {
+    throw new Error('Could not create order');
+  }
+
+  await recordOrderEvent({
+    orderId,
+    eventType: 'checkout_pending_created',
+    actorType: 'user',
+    actorId: user.id,
+    summary: 'Pending course order created',
+    details: {
+      courseSlug: course.slug,
+      couponCode: coupon?.code ?? null,
+      finalAmount: pricing.finalPrice,
+    },
+  });
+
+  return {
+    orderId,
+    user,
+    course,
+    pricing,
+    customerName: getCustomerName(user),
+    customerEmail: getCustomerEmail(user),
+  };
+}
+
+export async function createFreeCourseEnrollment(courseSlug: string) {
+  const { supabase, user } = await getAuthenticatedUserWithProfile();
+
+  const course = getCourseCardBySlug(courseSlug);
+
+  if (!course) {
+    throw new Error('Course not found');
+  }
+
+  if (course.price !== 0) {
+    throw new Error('এই courseটি free নয়।');
+  }
+
+  const existingOwnership = await supabase
+    .from('enrollments')
+    .select('course_slug')
+    .eq('user_id', user.id)
+    .eq('course_slug', course.slug)
+    .in('enrollment_status', ['active', 'completed', 'pending'])
+    .limit(1);
+
+  if (((existingOwnership.data as Array<{ course_slug: string }> | null) ?? []).length > 0) {
+    return { alreadyOwned: true };
+  }
+
+  const orderId = crypto.randomUUID();
+  const { error: orderError } = await supabase.from('orders').insert({
+    id: orderId,
+    user_id: user.id,
+    course_slug: course.slug,
+    amount: 0,
+    original_amount: 0,
+    referral_discount_amount: 0,
+    coupon_code: null,
+    coupon_discount_amount: 0,
+    wallet_discount_amount: 0,
+    final_amount: 0,
+    currency: 'BDT',
+    payment_status: 'paid',
+    payment_provider: 'free',
+    checkout_source: 'free-course',
+    paid_at: new Date().toISOString(),
+    metadata: {
+      checkoutSource: 'free-course',
+      purchasedItems: [`course:${course.slug}`],
+    },
+  });
+
+  if (orderError) {
+    throw new Error('Free enrollment order create করা যায়নি।');
+  }
+
+  try {
+    const entitlements = await grantEntitlementsForOrder(orderId);
+    await Promise.all(
+      entitlements.map((entitlement) => enqueueDeliveryJobsForEntitlement(entitlement.id)),
+    );
+    await processPendingDeliveryJobs(12);
+  } catch (error) {
+    if (!isModernFulfillmentSchemaMissing(error)) {
+      throw error;
+    }
+
+    await supabase.from('enrollments').upsert(
+      {
+        user_id: user.id,
+        course_slug: course.slug,
+        course_title: course.title,
+        enrollment_status: 'active',
+        progress: 0,
+      },
+      { onConflict: 'user_id,course_slug' },
+    );
+  }
+
+  await setOrderFulfillmentState(orderId, 'fulfilled');
+  await recordOrderEvent({
+    orderId,
+    eventType: 'free_enrollment_fulfilled',
+    actorType: 'user',
+    actorId: user.id,
+    summary: 'Free course enrollment fulfilled',
+    details: {
+      courseSlug: course.slug,
+    },
+  });
+
+  return { alreadyOwned: false };
+}
+
+function buildCartOrderSlug(items: CartCatalogItem[]) {
+  return encodeCartOrderItems(items);
+}
+
+export async function createPendingCartOrder(items: CartItemInput[], couponCode?: string) {
+  const { supabase, user, profile } = await getAuthenticatedUserWithProfile();
+
+  const checkoutItems = resolveCartItems(items);
+
+  if (!checkoutItems.length) {
+    throw new Error('কার্টে valid item পাওয়া যায়নি।');
+  }
+
+  const basePricing = getCartPricingPreview(
+    checkoutItems,
+    Number(profile?.wallet_balance ?? 0),
+    Number(profile?.welcome_discount_uses_remaining ?? 0),
+  );
+  const coupon = await getCheckoutCoupon({
+    couponCode,
+    items: basePricing.pricedItems.map((item) => ({
+      type: item.type,
+      slug: item.slug,
+      effectivePrice: item.effectivePrice,
+    })),
+    referralDiscount: basePricing.referralDiscount,
+    userId: user.id,
+  });
+  const pricing = getCartPricingPreview(
+    checkoutItems,
+    Number(profile?.wallet_balance ?? 0),
+    Number(profile?.welcome_discount_uses_remaining ?? 0),
+    coupon,
+  );
+
+  const orderId = crypto.randomUUID();
+  const { error } = await supabase.from('orders').insert({
+    id: orderId,
+    user_id: user.id,
+    course_slug: buildCartOrderSlug(checkoutItems),
+    amount: pricing.finalPrice,
+    original_amount: pricing.originalSubtotal,
+    referral_discount_amount: pricing.referralDiscount,
+    coupon_code: pricing.appliedCoupon?.code ?? null,
+    coupon_discount_amount: pricing.couponDiscount,
+    coupon_snapshot: buildCouponSnapshot(coupon, pricing.couponDiscount),
+    wallet_discount_amount: pricing.walletDiscount,
+    final_amount: pricing.finalPrice,
+    currency: 'BDT',
+    payment_status: 'pending',
+    payment_provider: 'piprapay',
+    checkout_source: 'cart',
+    metadata: {
+      checkoutSource: 'cart',
+      purchasedItems: checkoutItems.map((item) => `${item.type}:${item.slug}`),
+      coupon: buildCouponSnapshot(coupon, pricing.couponDiscount),
+    },
+  });
+
+  if (error) {
+    throw new Error('Could not create cart order');
+  }
+
+  const { error: orderItemsError } = await supabase.from('order_items').insert(
+    pricing.pricedItems.map((item) => ({
+      order_id: orderId,
+      item_type: item.type,
+      item_slug: item.slug,
+      item_title: item.title,
+      unit_price: item.effectivePrice,
+      original_price: item.originalPrice,
+      quantity: 1,
+    })),
+  );
+
+  if (orderItemsError) {
+    await supabase.from('orders').delete().eq('id', orderId);
+    throw new Error('Could not create cart order items');
+  }
+
+  await recordOrderEvent({
+    orderId,
+    eventType: 'checkout_pending_created',
+    actorType: 'user',
+    actorId: user.id,
+    summary: 'Pending cart order created',
+    details: {
+      itemCount: checkoutItems.length,
+      couponCode: coupon?.code ?? null,
+      finalAmount: pricing.finalPrice,
+    },
+  });
+
+  return {
+    orderId,
+    user,
+    items: checkoutItems,
+    pricing,
+    customerName: getCustomerName(user),
+    customerEmail: getCustomerEmail(user),
+  };
+}
+
+export async function attachOrderPaymentUrl(
+  orderId: string,
+  paymentUrl: string,
+  options?: {
+    provider?: string;
+    providerInvoiceId?: string | null;
+    providerValId?: string | null;
+    providerTransactionId?: string | null;
+    payload?: Record<string, unknown>;
+  },
+) {
+  const supabase = createAdminClient();
+  const updatePayload: Record<string, unknown> = {
+    payment_url: paymentUrl,
+  };
+
+  if (options?.provider) {
+    updatePayload.payment_provider = options.provider;
+  }
+
+  if (options?.providerInvoiceId) {
+    updatePayload.provider_invoice_id = options.providerInvoiceId;
+  }
+
+  if (options?.providerValId) {
+    updatePayload.provider_val_id = options.providerValId;
+  }
+
+  if (options?.providerTransactionId) {
+    updatePayload.provider_transaction_id = options.providerTransactionId;
+  }
+
+  const { error } = await supabase
+    .from('orders')
+    .update(updatePayload)
+    .eq('id', orderId);
+
+  if (error) {
+    throw new Error('Payment URL save করা যায়নি।');
+  }
+
+  await recordPaymentTransaction({
+    orderId,
+    provider: options?.provider ?? 'piprapay',
+    status: 'pending',
+    providerInvoiceId: options?.providerInvoiceId ?? null,
+    providerValId: options?.providerValId ?? null,
+    providerTransactionId: options?.providerTransactionId ?? null,
+    verificationSource: 'checkout',
+    payload: {
+      paymentUrl,
+      ...(options?.payload ?? {}),
+    },
+  });
+}
+
+export async function markOrderCancelled(orderId: string) {
+  const supabase = createAdminClient();
+  const { data: orderData } = await supabase
+    .from('orders')
+    .select(
+      'id, user_id, course_slug, payment_status, amount, final_amount, original_amount, currency, wallet_discount_amount, referral_discount_amount, provider_invoice_id, provider_val_id, provider_transaction_id, payment_url, metadata, created_at, paid_at',
+    )
+    .eq('id', orderId)
+    .single();
+
+  const order = orderData as OrderRow | null;
+
+  if (!order) {
+    return { ok: false, message: 'Order পাওয়া যায়নি।' };
+  }
+
+  if (order.payment_status === 'paid') {
+    return { ok: false, message: 'এই order-এর payment already successful।' };
+  }
+
+  const { data: storedOrderItems } = await supabase
+    .from('order_items')
+    .select('item_type, item_slug, item_title, unit_price, original_price')
+    .eq('order_id', order.id);
+
+  const orderItems = ((storedOrderItems as OrderItemRow[] | null) ?? []);
+  const purchaseTracking = buildPurchaseTrackingDetails(order, orderItems);
+  let nextMetadata = buildOrderMetadata(getOrderMetadata(order.metadata));
+  let metadataDirty = false;
+  const emailFlags = nextMetadata.emailFlags as Record<string, unknown>;
+
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('full_name, email, phone')
+    .eq('id', order.user_id)
+    .single();
+
+  const profile = (profileData as ProfileRow | null) ?? null;
+
+  if (emailFlags.cancelledAdmin !== true) {
+    try {
+      await sendAdminOrderLifecycleEmail({
+        status: 'cancelled',
+        orderId: order.id,
+        buyerName:
+          typeof profile?.full_name === 'string' ? profile.full_name : undefined,
+        buyerEmail: typeof profile?.email === 'string' ? profile.email : undefined,
+        buyerPhone: typeof profile?.phone === 'string' ? profile.phone : undefined,
+        invoiceId: order.provider_invoice_id || undefined,
+        total: Number(purchaseTracking.purchaseCustomData.value ?? 0),
+        paymentUrl: order.payment_url || undefined,
+        items: purchaseTracking.trackedItems.map((item) => ({
+          title: item.title,
+          type: item.itemType,
+          price: item.price,
+        })),
+      });
+
+      nextMetadata = {
+        ...nextMetadata,
+        emailFlags: {
+          ...emailFlags,
+          cancelledAdmin: true,
+        },
+        cancelledEmailSentAt: Date.now(),
+      };
+      metadataDirty = true;
+    } catch (error) {
+      console.error('Order cancel email failed', error);
+    }
+  }
+
+  const updatePayload: Record<string, unknown> = {};
+
+  if (order.payment_status !== 'failed') {
+    updatePayload.payment_status = 'failed';
+  }
+
+  if (metadataDirty) {
+    updatePayload.metadata = nextMetadata;
+  }
+
+  if (Object.keys(updatePayload).length > 0) {
+    await supabase.from('orders').update(updatePayload).eq('id', order.id);
+  }
+
+  await recordOrderEvent({
+    orderId: order.id,
+    eventType: 'payment_cancelled',
+    actorType: 'gateway',
+    summary: 'Payment marked as cancelled/failed',
+    details: {
+      paymentStatus: 'failed',
+    },
+  });
+
+  return { ok: true, message: 'Payment cancel status record হয়েছে।' };
+}
+
+export async function finalizeZiniPayOrder(orderId: string, invoiceId: string) {
+  const supabase = createAdminClient();
+  let verificationPayload: Record<string, unknown> = {};
+  const { data: initialOrderData } = await supabase
+    .from('orders')
+    .select(
+      'id, user_id, course_slug, payment_status, fulfillment_status, amount, final_amount, original_amount, currency, wallet_discount_amount, referral_discount_amount, coupon_code, coupon_discount_amount, provider_invoice_id, provider_val_id, provider_transaction_id, payment_url, metadata, created_at, paid_at',
+    )
+    .eq('id', orderId)
+    .single();
+
+  let order = initialOrderData as OrderRow | null;
+
+  if (!order) {
+    return { ok: false, message: 'Order পাওয়া যায়নি।' };
+  }
+
+  const wasAlreadyPaid = order.payment_status === 'paid';
+  let resolvedInvoiceId = order.provider_invoice_id || invoiceId;
+  let resolvedValId = order.provider_val_id || resolvedInvoiceId;
+  let resolvedTransactionId = order.provider_transaction_id || '';
+  let justMarkedPaid = false;
+
+  if (!wasAlreadyPaid) {
+    const verification = await verifyZiniPayPayment({ invoiceId });
+    verificationPayload = verification;
+
+    if (!isZiniPayCompleted(verification)) {
+      return { ok: false, message: 'Payment এখনও completed হয়নি।' };
+    }
+
+    resolvedInvoiceId = extractZiniPayInvoiceId(verification) || invoiceId;
+    resolvedValId = extractZiniPayValId(verification) || resolvedInvoiceId;
+    resolvedTransactionId = extractZiniPayTransactionId(verification);
+
+    const { data: updatedOrder, error: orderUpdateError } = await supabase
+      .from('orders')
+      .update({
+        payment_status: 'paid',
+        provider_invoice_id: resolvedInvoiceId,
+        provider_val_id: resolvedValId || null,
+        provider_transaction_id: resolvedTransactionId || null,
+        paid_at: new Date().toISOString(),
+        last_reconciled_at: new Date().toISOString(),
+        gateway_payload: verification,
+      })
+      .eq('id', order.id)
+      .neq('payment_status', 'paid')
+      .select(
+        'id, user_id, course_slug, payment_status, fulfillment_status, amount, final_amount, original_amount, currency, wallet_discount_amount, referral_discount_amount, coupon_code, coupon_discount_amount, provider_invoice_id, provider_val_id, provider_transaction_id, payment_url, metadata, created_at, paid_at',
+      )
+      .maybeSingle();
+
+    if (orderUpdateError) {
+      return { ok: false, message: 'Order update করা যায়নি।' };
+    }
+
+    if (updatedOrder) {
+      order = updatedOrder as OrderRow;
+      justMarkedPaid = true;
+    } else {
+      const { data: refreshedOrder } = await supabase
+        .from('orders')
+        .select(
+          'id, user_id, course_slug, payment_status, fulfillment_status, amount, final_amount, original_amount, currency, wallet_discount_amount, referral_discount_amount, coupon_code, coupon_discount_amount, provider_invoice_id, provider_val_id, provider_transaction_id, payment_url, metadata, created_at, paid_at',
+        )
+        .eq('id', order.id)
+        .single();
+
+      order = (refreshedOrder as OrderRow | null) ?? order;
+      resolvedInvoiceId = order.provider_invoice_id || resolvedInvoiceId;
+      resolvedValId = order.provider_val_id || resolvedValId;
+      resolvedTransactionId = order.provider_transaction_id || resolvedTransactionId;
+    }
+  }
+
+  return finalizeVerifiedOrder({
+    order,
+    provider: 'zinipay',
+    verificationPayload,
+    wasAlreadyPaid,
+    justMarkedPaid,
+    resolvedInvoiceId,
+    resolvedValId: resolvedValId || null,
+    resolvedTransactionId: resolvedTransactionId || null,
+  });
+}
+
+export async function finalizePipraPayOrder(orderId: string, ppId: string) {
+  const supabase = createAdminClient();
+  let verificationPayload: Record<string, unknown> = {};
+  const { data: initialOrderData } = await supabase
+    .from('orders')
+    .select(
+      'id, user_id, course_slug, payment_status, fulfillment_status, amount, final_amount, original_amount, currency, wallet_discount_amount, referral_discount_amount, coupon_code, coupon_discount_amount, provider_invoice_id, provider_val_id, provider_transaction_id, payment_url, metadata, created_at, paid_at',
+    )
+    .eq('id', orderId)
+    .single();
+
+  let order = initialOrderData as OrderRow | null;
+
+  if (!order) {
+    return { ok: false, message: 'Order পাওয়া যায়নি।' };
+  }
+
+  const wasAlreadyPaid = order.payment_status === 'paid';
+  let resolvedInvoiceId = order.provider_invoice_id || ppId;
+  let resolvedValId = order.provider_val_id || resolvedInvoiceId;
+  let resolvedTransactionId = order.provider_transaction_id || '';
+  let justMarkedPaid = false;
+
+  if (!wasAlreadyPaid) {
+    const verification = (await verifyPipraPayPayment(ppId)) as Record<string, unknown>;
+    verificationPayload = verification;
+
+    if (!isPipraPayCompleted(verification)) {
+      return { ok: false, message: 'Payment এখনও completed হয়নি।' };
+    }
+
+    resolvedInvoiceId = extractPipraPayId(verification) || ppId;
+    resolvedValId = resolvedInvoiceId;
+    resolvedTransactionId = extractPipraPayTransactionId(verification);
+
+    const { data: updatedOrder, error: orderUpdateError } = await supabase
+      .from('orders')
+      .update({
+        payment_status: 'paid',
+        payment_provider: 'piprapay',
+        provider_invoice_id: resolvedInvoiceId,
+        provider_val_id: resolvedValId || null,
+        provider_transaction_id: resolvedTransactionId || null,
+        paid_at: new Date().toISOString(),
+        last_reconciled_at: new Date().toISOString(),
+        gateway_payload: verification,
+      })
+      .eq('id', order.id)
+      .neq('payment_status', 'paid')
+      .select(
+        'id, user_id, course_slug, payment_status, fulfillment_status, amount, final_amount, original_amount, currency, wallet_discount_amount, referral_discount_amount, coupon_code, coupon_discount_amount, provider_invoice_id, provider_val_id, provider_transaction_id, payment_url, metadata, created_at, paid_at',
+      )
+      .maybeSingle();
+
+    if (orderUpdateError) {
+      return { ok: false, message: 'Order update করা যায়নি।' };
+    }
+
+    if (updatedOrder) {
+      order = updatedOrder as OrderRow;
+      justMarkedPaid = true;
+    } else {
+      const { data: refreshedOrder } = await supabase
+        .from('orders')
+        .select(
+          'id, user_id, course_slug, payment_status, fulfillment_status, amount, final_amount, original_amount, currency, wallet_discount_amount, referral_discount_amount, coupon_code, coupon_discount_amount, provider_invoice_id, provider_val_id, provider_transaction_id, payment_url, metadata, created_at, paid_at',
+        )
+        .eq('id', order.id)
+        .single();
+
+      order = (refreshedOrder as OrderRow | null) ?? order;
+      resolvedInvoiceId = order.provider_invoice_id || resolvedInvoiceId;
+      resolvedValId = order.provider_val_id || resolvedValId;
+      resolvedTransactionId = order.provider_transaction_id || resolvedTransactionId;
+    }
+  }
+
+  return finalizeVerifiedOrder({
+    order,
+    provider: 'piprapay',
+    verificationPayload,
+    wasAlreadyPaid,
+    justMarkedPaid,
+    resolvedInvoiceId,
+    resolvedValId: resolvedValId || null,
+    resolvedTransactionId: resolvedTransactionId || null,
+  });
 }

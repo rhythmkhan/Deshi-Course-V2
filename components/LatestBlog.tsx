@@ -1,18 +1,20 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { BLOG_POSTS } from '@/lib/blog-data';
+import { BLOG_POSTS, type BlogPost } from '@/lib/blog-data';
 import { Calendar, ArrowRight } from 'lucide-react';
 
 type LatestBlogProps = {
+  posts?: BlogPost[];
   mobileLimit?: number;
   desktopLimit?: number;
 };
 
 export default function LatestBlog({
+  posts = BLOG_POSTS,
   mobileLimit = 2,
   desktopLimit = 3,
 }: LatestBlogProps) {
-  const visiblePosts = BLOG_POSTS.slice(0, Math.max(mobileLimit, desktopLimit));
+  const visiblePosts = posts.slice(0, Math.max(mobileLimit, desktopLimit));
 
   return (
     <section className="deferred-section py-16 sm:py-20 lg:py-24">

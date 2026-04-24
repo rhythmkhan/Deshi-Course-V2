@@ -6,9 +6,19 @@ import {
 } from '@/lib/bundle-catalog';
 import { COURSE_CATALOG } from '@/lib/course-catalog';
 import { SHOP_CATALOG } from '@/lib/shop-catalog';
+import { isMissingRelationError } from '@/lib/supabase/errors';
 
 interface EnrollmentRow {
   course_slug: string;
+}
+
+interface EntitlementRow {
+  id: string;
+  item_type: 'course' | 'bundle' | 'shop';
+  item_slug: string;
+  item_title: string;
+  order_id: string | null;
+  granted_at: string | null;
 }
 
 interface OrderRow {
@@ -34,6 +44,7 @@ export interface PurchaseDetails {
   orderId: string;
   purchasedAt: string | null;
   items: PurchaseDetailItem[];
+  accessHref?: string | null;
 }
 
 function decodeCartOrderItems(encodedValue: string) {
@@ -87,6 +98,28 @@ async function loadPaidOrders(supabase: SupabaseClient, userId: string) {
     orders: safeOrders,
     orderItems: ((orderItems as OrderItemRow[] | null) ?? []),
   };
+}
+
+async function loadActiveEntitlements(
+  supabase: SupabaseClient,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from('user_entitlements')
+    .select('id, item_type, item_slug, item_title, order_id, granted_at')
+    .eq('user_id', userId)
+    .in('status', ['pending', 'active'])
+    .order('granted_at', { ascending: false });
+
+  if (error) {
+    if (isMissingRelationError(error, 'user_entitlements')) {
+      return [] as EntitlementRow[];
+    }
+
+    throw error;
+  }
+
+  return (data as EntitlementRow[] | null) ?? [];
 }
 
 function resolveCatalogTitle(item: { type: 'course' | 'bundle' | 'shop'; slug: string }) {
@@ -163,6 +196,15 @@ export async function checkCourseOwnership(
     return true;
   }
 
+  const entitlements = await loadActiveEntitlements(supabase, userId);
+  if (
+    entitlements.some(
+      (entry) => entry.item_type === 'course' && entry.item_slug === courseSlug,
+    )
+  ) {
+    return true;
+  }
+
   const { orders, orderItems } = await loadPaidOrders(supabase, userId);
 
   for (const item of orderItems) {
@@ -207,13 +249,47 @@ export async function getCoursePurchaseDetails(
   userId: string,
   courseSlug: string,
 ) {
+  const entitlements = await loadActiveEntitlements(supabase, userId);
+  const entitlement = entitlements.find(
+    (entry) => entry.item_type === 'course' && entry.item_slug === courseSlug,
+  );
+
+  if (entitlement) {
+    if (entitlement.order_id) {
+      const { orders, orderItems } = await loadPaidOrders(supabase, userId);
+      const matchedOrder = orders.find((order) => order.id === entitlement.order_id);
+
+      if (matchedOrder) {
+        return {
+          ...buildPurchaseDetails(matchedOrder, orderItems),
+        } satisfies PurchaseDetails;
+      }
+    }
+
+    return {
+      orderId: entitlement.order_id ?? `manual-${entitlement.id.slice(0, 8)}`,
+      purchasedAt: entitlement.granted_at,
+      items: [
+        {
+          type: 'course',
+          slug: entitlement.item_slug,
+          title:
+            entitlement.item_title ||
+            resolveCatalogTitle({ type: 'course', slug: entitlement.item_slug }),
+        },
+      ],
+    } satisfies PurchaseDetails;
+  }
+
   const { orders, orderItems } = await loadPaidOrders(supabase, userId);
 
   for (const order of orders) {
     const matchedOrderItems = orderItems.filter((item) => item.order_id === order.id);
 
     if (matchedOrderItems.some((item) => item.item_type === 'course' && item.item_slug === courseSlug)) {
-      return buildPurchaseDetails(order, orderItems);
+      return {
+        ...buildPurchaseDetails(order, orderItems),
+      } satisfies PurchaseDetails;
     }
 
     if (
@@ -226,18 +302,24 @@ export async function getCoursePurchaseDetails(
         return bundleIncludesCourse(bundle, courseSlug);
       })
     ) {
-      return buildPurchaseDetails(order, orderItems);
+      return {
+        ...buildPurchaseDetails(order, orderItems),
+      } satisfies PurchaseDetails;
     }
 
     if (order.course_slug === courseSlug) {
-      return buildPurchaseDetails(order, orderItems);
+      return {
+        ...buildPurchaseDetails(order, orderItems),
+      } satisfies PurchaseDetails;
     }
 
     const decodedItems = decodeCartOrderItems(order.course_slug);
 
     for (const item of decodedItems) {
       if (item.type === 'course' && item.slug === courseSlug) {
-        return buildPurchaseDetails(order, orderItems);
+        return {
+          ...buildPurchaseDetails(order, orderItems),
+        } satisfies PurchaseDetails;
       }
 
       if (item.type === 'bundle') {
@@ -258,6 +340,15 @@ export async function checkItemPurchase(
   userId: string,
   item: { type: 'bundle' | 'shop'; slug: string },
 ) {
+  const entitlements = await loadActiveEntitlements(supabase, userId);
+  if (
+    entitlements.some(
+      (entry) => entry.item_type === item.type && entry.item_slug === item.slug,
+    )
+  ) {
+    return true;
+  }
+
   const { orders, orderItems } = await loadPaidOrders(supabase, userId);
 
   for (const orderItem of orderItems) {
@@ -298,6 +389,36 @@ export async function getItemPurchaseDetails(
   userId: string,
   item: { type: 'bundle' | 'shop'; slug: string },
 ) {
+  const entitlements = await loadActiveEntitlements(supabase, userId);
+  const entitlement = entitlements.find(
+    (entry) => entry.item_type === item.type && entry.item_slug === item.slug,
+  );
+
+  if (entitlement) {
+    if (entitlement.order_id) {
+      const { orders, orderItems } = await loadPaidOrders(supabase, userId);
+      const matchedOrder = orders.find((order) => order.id === entitlement.order_id);
+
+      if (matchedOrder) {
+        return buildPurchaseDetails(matchedOrder, orderItems);
+      }
+    }
+
+    return {
+      orderId: entitlement.order_id ?? `manual-${entitlement.id.slice(0, 8)}`,
+      purchasedAt: entitlement.granted_at,
+      items: [
+        {
+          type: item.type,
+          slug: entitlement.item_slug,
+          title:
+            entitlement.item_title ||
+            resolveCatalogTitle({ type: item.type, slug: entitlement.item_slug }),
+        },
+      ],
+    } satisfies PurchaseDetails;
+  }
+
   const { orders, orderItems } = await loadPaidOrders(supabase, userId);
 
   for (const order of orders) {

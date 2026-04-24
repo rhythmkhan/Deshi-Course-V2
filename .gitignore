@@ -1,5 +1,7 @@
 node_modules/
 .next/
+.next-build/
+.vercel/
 coverage/
 .DS_Store
 *.log
@@ -11,6 +13,9 @@ coverage/
 test-results/
 .codex-live/
 *.tsbuildinfo
+.cache/
+tmp/
 lighthouse-home.json
+metadata.json
 supabase/.temp/
 Purple Modern AI Prompt Services Flyer (1200 x 800 px)_20260311_014227_0000.png

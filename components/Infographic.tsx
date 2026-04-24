@@ -1,6 +1,9 @@
+'use client';
+
+import { useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Check } from 'lucide-react';
+import { Check, Filter, Search, X } from 'lucide-react';
 import { BUNDLE_CATALOG, type BundleItem } from '@/lib/bundle-catalog';
 
 interface InfographicProps {
@@ -16,8 +19,37 @@ export default function Infographic({
   mobileLimit,
   desktopLimit,
 }: InfographicProps) {
+  const [query, setQuery] = useState('');
+  const [priceFilter, setPriceFilter] = useState<'all' | 'under500' | '500plus'>('all');
+  const [tagFilter, setTagFilter] = useState<'all' | 'combo' | 'featured' | 'popular'>('all');
   const maxLimit = Math.max(limit ?? 0, mobileLimit ?? 0, desktopLimit ?? 0);
-  const visibleBundles = maxLimit > 0 ? bundles.slice(0, maxLimit) : bundles;
+  const visibleBundles = useMemo(() => {
+    const initial = maxLimit > 0 ? bundles.slice(0, maxLimit) : bundles;
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return initial.filter((bundle) => {
+      const matchesQuery =
+        normalizedQuery.length === 0 ||
+        bundle.title.toLowerCase().includes(normalizedQuery) ||
+        bundle.subtitle.toLowerCase().includes(normalizedQuery) ||
+        bundle.highlight.toLowerCase().includes(normalizedQuery);
+
+      const matchesPrice =
+        priceFilter === 'all' ||
+        (priceFilter === 'under500' ? bundle.bundlePrice < 500 : bundle.bundlePrice >= 500);
+
+      const bundleTag = (bundle.tag || '').toLowerCase();
+      const matchesTag =
+        tagFilter === 'all' ||
+        (tagFilter === 'combo'
+          ? bundle.highlight.toLowerCase().includes('combo') || bundle.subtitle.toLowerCase().includes('combo')
+          : tagFilter === 'featured'
+            ? bundleTag.includes('featured')
+            : bundleTag.includes('জনপ্রিয়') || bundleTag.includes('popular'));
+
+      return matchesQuery && matchesPrice && matchesTag;
+    });
+  }, [bundles, maxLimit, priceFilter, query, tagFilter]);
 
   return (
     <section className="deferred-section py-16 sm:py-20 lg:py-24">
@@ -39,6 +71,68 @@ export default function Infographic({
           </Link>
         </div>
 
+        <div className="mb-6 grid gap-3 rounded-3xl border border-gray-100 bg-white p-4 shadow-sm sm:grid-cols-[1.2fr_0.8fr_0.8fr_auto] sm:items-center">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Bundle search করুন"
+              className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-10 text-sm outline-none transition focus:border-brand focus:bg-white focus:ring-1 focus:ring-brand"
+            />
+            {query ? (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+                aria-label="Clear bundle search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
+
+          <div className="relative">
+            <Filter className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <select
+              value={priceFilter}
+              onChange={(e) => setPriceFilter(e.target.value as typeof priceFilter)}
+              className="w-full appearance-none rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-sm outline-none transition focus:border-brand focus:bg-white focus:ring-1 focus:ring-brand"
+            >
+              <option value="all">সব price</option>
+              <option value="under500">৳500 এর নিচে</option>
+              <option value="500plus">৳500+</option>
+            </select>
+          </div>
+
+          <div className="relative">
+            <Filter className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <select
+              value={tagFilter}
+              onChange={(e) => setTagFilter(e.target.value as typeof tagFilter)}
+              className="w-full appearance-none rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-sm outline-none transition focus:border-brand focus:bg-white focus:ring-1 focus:ring-brand"
+            >
+              <option value="all">সব tag</option>
+              <option value="popular">Popular</option>
+              <option value="featured">Featured</option>
+              <option value="combo">Combo</option>
+            </select>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setQuery('');
+              setPriceFilter('all');
+              setTagFilter('all');
+            }}
+            className="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 transition hover:border-brand hover:text-brand"
+          >
+            Reset
+          </button>
+        </div>
+
         <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3 lg:gap-8">
           {visibleBundles.map((bundle, index) => {
             const hideOnDesktop =
@@ -50,7 +144,7 @@ export default function Infographic({
 
             return (
             <article
-              key={bundle.id}
+              key={bundle.slug}
               className={`flex min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl ${hideOnDesktop ? 'lg:hidden' : ''}`}
             >
               <div className="relative h-28 overflow-hidden sm:h-48">

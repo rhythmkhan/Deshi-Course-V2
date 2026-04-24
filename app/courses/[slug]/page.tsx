@@ -10,7 +10,10 @@ import MetaViewContentTracker from '@/components/MetaViewContentTracker';
 import Navbar from '@/components/Navbar';
 import CoursePurchasePanel from '@/components/CoursePurchasePanel';
 import Footer from '@/components/Footer';
-import { COURSE_DETAILS, getCourseBySlug } from '@/lib/course-details';
+import {
+  getPublishedCourseDetailBySlug,
+  listPublishedCourses,
+} from '@/lib/content-store';
 import { buildMetaContentType } from '@/lib/meta';
 import {
   buildBreadcrumbSchema,
@@ -24,7 +27,7 @@ interface CourseDetailPageProps {
 }
 
 export const revalidate = 86400;
-export const dynamicParams = false;
+export const dynamicParams = true;
 
 const levelLabel = {
   beginner: 'বিগিনার',
@@ -33,14 +36,15 @@ const levelLabel = {
 } as const;
 
 export async function generateStaticParams() {
-  return COURSE_DETAILS.map((course) => ({ slug: course.slug }));
+  const courses = await listPublishedCourses();
+  return courses.map((course) => ({ slug: course.slug }));
 }
 
 export async function generateMetadata({
   params,
 }: CourseDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const course = getCourseBySlug(slug);
+  const course = await getPublishedCourseDetailBySlug(slug);
 
   if (!course) {
     return buildMetadata({
@@ -68,7 +72,7 @@ export async function generateMetadata({
 
 export default async function CourseDetailPage({ params }: CourseDetailPageProps) {
   const { slug } = await params;
-  const course = getCourseBySlug(slug);
+  const course = await getPublishedCourseDetailBySlug(slug);
 
   if (!course) {
     notFound();

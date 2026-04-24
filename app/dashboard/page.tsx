@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -35,191 +35,10 @@ import { COURSE_CATALOG } from '@/lib/course-catalog';
 import { buildFallbackReferralCode, formatPrice, getPricingPreview, REFERRAL_DISCOUNT_RATE, REFERRER_WALLET_CREDIT } from '@/lib/referral';
 import { SHOP_CATALOG } from '@/lib/shop-catalog';
 
-function md5(input: string) {
-  function rotateLeft(value: number, amount: number) {
-    return (value << amount) | (value >>> (32 - amount));
-  }
+type DashboardTab = 'all' | 'owned' | 'refer' | 'shop' | 'bundle' | 'support';
 
-  function addUnsigned(x: number, y: number) {
-    const x4 = x & 0x40000000;
-    const y4 = y & 0x40000000;
-    const x8 = x & 0x80000000;
-    const y8 = y & 0x80000000;
-    const result = (x & 0x3fffffff) + (y & 0x3fffffff);
-
-    if (x4 & y4) {
-      return result ^ 0x80000000 ^ x8 ^ y8;
-    }
-
-    if (x4 | y4) {
-      if (result & 0x40000000) {
-        return result ^ 0xc0000000 ^ x8 ^ y8;
-      }
-
-      return result ^ 0x40000000 ^ x8 ^ y8;
-    }
-
-    return result ^ x8 ^ y8;
-  }
-
-  function f(x: number, y: number, z: number) {
-    return (x & y) | (~x & z);
-  }
-
-  function g(x: number, y: number, z: number) {
-    return (x & z) | (y & ~z);
-  }
-
-  function h(x: number, y: number, z: number) {
-    return x ^ y ^ z;
-  }
-
-  function i(x: number, y: number, z: number) {
-    return y ^ (x | ~z);
-  }
-
-  function ff(a: number, b: number, c: number, d: number, x: number, s: number, ac: number) {
-    a = addUnsigned(a, addUnsigned(addUnsigned(f(b, c, d), x), ac));
-    return addUnsigned(rotateLeft(a, s), b);
-  }
-
-  function gg(a: number, b: number, c: number, d: number, x: number, s: number, ac: number) {
-    a = addUnsigned(a, addUnsigned(addUnsigned(g(b, c, d), x), ac));
-    return addUnsigned(rotateLeft(a, s), b);
-  }
-
-  function hh(a: number, b: number, c: number, d: number, x: number, s: number, ac: number) {
-    a = addUnsigned(a, addUnsigned(addUnsigned(h(b, c, d), x), ac));
-    return addUnsigned(rotateLeft(a, s), b);
-  }
-
-  function ii(a: number, b: number, c: number, d: number, x: number, s: number, ac: number) {
-    a = addUnsigned(a, addUnsigned(addUnsigned(i(b, c, d), x), ac));
-    return addUnsigned(rotateLeft(a, s), b);
-  }
-
-  function convertToWordArray(value: string) {
-    const wordCount = (((value.length + 8) >> 6) + 1) * 16;
-    const wordArray = new Array<number>(wordCount - 1);
-    let bytePosition = 0;
-    let byteCount = 0;
-
-    while (byteCount < value.length) {
-      const wordIndex = byteCount >> 2;
-      bytePosition = (byteCount % 4) * 8;
-      wordArray[wordIndex] = wordArray[wordIndex] | (value.charCodeAt(byteCount) << bytePosition);
-      byteCount += 1;
-    }
-
-    const wordIndex = byteCount >> 2;
-    bytePosition = (byteCount % 4) * 8;
-    wordArray[wordIndex] = wordArray[wordIndex] | (0x80 << bytePosition);
-    wordArray[wordCount - 2] = value.length << 3;
-    wordArray[wordCount - 1] = value.length >>> 29;
-
-    return wordArray;
-  }
-
-  function wordToHex(value: number) {
-    let output = '';
-
-    for (let count = 0; count <= 3; count += 1) {
-      const byte = (value >>> (count * 8)) & 255;
-      const hex = `0${byte.toString(16)}`;
-      output += hex.slice(-2);
-    }
-
-    return output;
-  }
-
-  const normalized = unescape(encodeURIComponent(input));
-  const words = convertToWordArray(normalized);
-  let a = 0x67452301;
-  let b = 0xefcdab89;
-  let c = 0x98badcfe;
-  let d = 0x10325476;
-
-  for (let k = 0; k < words.length; k += 16) {
-    const aa = a;
-    const bb = b;
-    const cc = c;
-    const dd = d;
-
-    a = ff(a, b, c, d, words[k + 0], 7, 0xd76aa478);
-    d = ff(d, a, b, c, words[k + 1], 12, 0xe8c7b756);
-    c = ff(c, d, a, b, words[k + 2], 17, 0x242070db);
-    b = ff(b, c, d, a, words[k + 3], 22, 0xc1bdceee);
-    a = ff(a, b, c, d, words[k + 4], 7, 0xf57c0faf);
-    d = ff(d, a, b, c, words[k + 5], 12, 0x4787c62a);
-    c = ff(c, d, a, b, words[k + 6], 17, 0xa8304613);
-    b = ff(b, c, d, a, words[k + 7], 22, 0xfd469501);
-    a = ff(a, b, c, d, words[k + 8], 7, 0x698098d8);
-    d = ff(d, a, b, c, words[k + 9], 12, 0x8b44f7af);
-    c = ff(c, d, a, b, words[k + 10], 17, 0xffff5bb1);
-    b = ff(b, c, d, a, words[k + 11], 22, 0x895cd7be);
-    a = ff(a, b, c, d, words[k + 12], 7, 0x6b901122);
-    d = ff(d, a, b, c, words[k + 13], 12, 0xfd987193);
-    c = ff(c, d, a, b, words[k + 14], 17, 0xa679438e);
-    b = ff(b, c, d, a, words[k + 15], 22, 0x49b40821);
-
-    a = gg(a, b, c, d, words[k + 1], 5, 0xf61e2562);
-    d = gg(d, a, b, c, words[k + 6], 9, 0xc040b340);
-    c = gg(c, d, a, b, words[k + 11], 14, 0x265e5a51);
-    b = gg(b, c, d, a, words[k + 0], 20, 0xe9b6c7aa);
-    a = gg(a, b, c, d, words[k + 5], 5, 0xd62f105d);
-    d = gg(d, a, b, c, words[k + 10], 9, 0x02441453);
-    c = gg(c, d, a, b, words[k + 15], 14, 0xd8a1e681);
-    b = gg(b, c, d, a, words[k + 4], 20, 0xe7d3fbc8);
-    a = gg(a, b, c, d, words[k + 9], 5, 0x21e1cde6);
-    d = gg(d, a, b, c, words[k + 14], 9, 0xc33707d6);
-    c = gg(c, d, a, b, words[k + 3], 14, 0xf4d50d87);
-    b = gg(b, c, d, a, words[k + 8], 20, 0x455a14ed);
-    a = gg(a, b, c, d, words[k + 13], 5, 0xa9e3e905);
-    d = gg(d, a, b, c, words[k + 2], 9, 0xfcefa3f8);
-    c = gg(c, d, a, b, words[k + 7], 14, 0x676f02d9);
-    b = gg(b, c, d, a, words[k + 12], 20, 0x8d2a4c8a);
-
-    a = hh(a, b, c, d, words[k + 5], 4, 0xfffa3942);
-    d = hh(d, a, b, c, words[k + 8], 11, 0x8771f681);
-    c = hh(c, d, a, b, words[k + 11], 16, 0x6d9d6122);
-    b = hh(b, c, d, a, words[k + 14], 23, 0xfde5380c);
-    a = hh(a, b, c, d, words[k + 1], 4, 0xa4beea44);
-    d = hh(d, a, b, c, words[k + 4], 11, 0x4bdecfa9);
-    c = hh(c, d, a, b, words[k + 7], 16, 0xf6bb4b60);
-    b = hh(b, c, d, a, words[k + 10], 23, 0xbebfbc70);
-    a = hh(a, b, c, d, words[k + 13], 4, 0x289b7ec6);
-    d = hh(d, a, b, c, words[k + 0], 11, 0xeaa127fa);
-    c = hh(c, d, a, b, words[k + 3], 16, 0xd4ef3085);
-    b = hh(b, c, d, a, words[k + 6], 23, 0x04881d05);
-    a = hh(a, b, c, d, words[k + 9], 4, 0xd9d4d039);
-    d = hh(d, a, b, c, words[k + 12], 11, 0xe6db99e5);
-    c = hh(c, d, a, b, words[k + 15], 16, 0x1fa27cf8);
-    b = hh(b, c, d, a, words[k + 2], 23, 0xc4ac5665);
-
-    a = ii(a, b, c, d, words[k + 0], 6, 0xf4292244);
-    d = ii(d, a, b, c, words[k + 7], 10, 0x432aff97);
-    c = ii(c, d, a, b, words[k + 14], 15, 0xab9423a7);
-    b = ii(b, c, d, a, words[k + 5], 21, 0xfc93a039);
-    a = ii(a, b, c, d, words[k + 12], 6, 0x655b59c3);
-    d = ii(d, a, b, c, words[k + 3], 10, 0x8f0ccc92);
-    c = ii(c, d, a, b, words[k + 10], 15, 0xffeff47d);
-    b = ii(b, c, d, a, words[k + 1], 21, 0x85845dd1);
-    a = ii(a, b, c, d, words[k + 8], 6, 0x6fa87e4f);
-    d = ii(d, a, b, c, words[k + 15], 10, 0xfe2ce6e0);
-    c = ii(c, d, a, b, words[k + 6], 15, 0xa3014314);
-    b = ii(b, c, d, a, words[k + 13], 21, 0x4e0811a1);
-    a = ii(a, b, c, d, words[k + 4], 6, 0xf7537e82);
-    d = ii(d, a, b, c, words[k + 11], 10, 0xbd3af235);
-    c = ii(c, d, a, b, words[k + 2], 15, 0x2ad7d2bb);
-    b = ii(b, c, d, a, words[k + 9], 21, 0xeb86d391);
-
-    a = addUnsigned(a, aa);
-    b = addUnsigned(b, bb);
-    c = addUnsigned(c, cc);
-    d = addUnsigned(d, dd);
-  }
-
-  return `${wordToHex(a)}${wordToHex(b)}${wordToHex(c)}${wordToHex(d)}`;
+function isDashboardTab(value: string | null): value is DashboardTab {
+  return value !== null && ['all', 'owned', 'refer', 'shop', 'bundle', 'support'].includes(value);
 }
 
 function resolveAvatarUrl(email: string, avatarUrl?: string, fullName?: string) {
@@ -227,14 +46,16 @@ function resolveAvatarUrl(email: string, avatarUrl?: string, fullName?: string) 
     return avatarUrl;
   }
 
-  const normalizedEmail = email.trim().toLowerCase();
+  const fallbackName = encodeURIComponent(fullName || email.split('@')[0] || 'Deshi Course');
+  return `https://ui-avatars.com/api/?name=${fallbackName}&background=6d28d9&color=fff&size=160`;
+}
 
-  if (normalizedEmail) {
-    return `https://www.gravatar.com/avatar/${md5(normalizedEmail)}?d=identicon&s=160`;
+function getAbsoluteReferralLink(referralCode: string) {
+  if (!referralCode || typeof window === 'undefined') {
+    return '';
   }
 
-  const fallbackName = encodeURIComponent(fullName || 'Deshi Course');
-  return `https://ui-avatars.com/api/?name=${fallbackName}&background=6d28d9&color=fff&size=160`;
+  return `${window.location.origin}/signup?ref=${encodeURIComponent(referralCode)}`;
 }
 
 interface ReferralEntry {
@@ -402,12 +223,18 @@ export default function DashboardPage() {
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPresetFilter, setSelectedPresetFilter] = useState<'beginner' | 'intermediate' | 'advanced' | 'free' | null>(null);
-  const [activeTab, setActiveTab] = useState('all'); // 'all', 'owned', 'refer', 'shop', 'bundle', 'support'
+  const [activeTab, setActiveTab] = useState<DashboardTab>(() => {
+    if (typeof window === 'undefined') {
+      return 'all';
+    }
+
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    return isDashboardTab(tab) ? tab : 'all';
+  });
   const [currentUserId, setCurrentUserId] = useState('');
   const [userName, setUserName] = useState('শিক্ষার্থী');
   const [userEmail, setUserEmail] = useState('');
   const [userAvatar, setUserAvatar] = useState('');
-  const [appOrigin, setAppOrigin] = useState('');
   const [walletBalance, setWalletBalance] = useState(0);
   const [referralCode, setReferralCode] = useState('');
   const [referralInput, setReferralInput] = useState('');
@@ -422,11 +249,12 @@ export default function DashboardPage() {
   const [isMobileProfileMenuOpen, setIsMobileProfileMenuOpen] = useState(false);
   const [ownedCourseSlugs, setOwnedCourseSlugs] = useState<string[]>([]);
   const [courseProgressBySlug, setCourseProgressBySlug] = useState<Record<string, number>>({});
+  const [courseAccessLinks, setCourseAccessLinks] = useState<Record<string, string>>({});
   const [purchasedBundleSlugs, setPurchasedBundleSlugs] = useState<string[]>([]);
   const [purchasedProductSlugs, setPurchasedProductSlugs] = useState<string[]>([]);
   const [deliveryAccessLinks, setDeliveryAccessLinks] = useState<DeliveryAccessLink[]>([]);
 
-  async function loadReferralState(userId: string, fallbackCode: string) {
+  const loadReferralState = useCallback(async (userId: string, fallbackCode: string) => {
     if (!supabase) {
       throw new Error('Supabase browser client is not configured.');
     }
@@ -479,9 +307,9 @@ export default function DashboardPage() {
     setReferralCount(count ?? 0);
 
     return profileState;
-  }
+  }, [supabase]);
 
-  async function loadPurchaseState(userId: string) {
+  const loadPurchaseState = useCallback(async (userId: string) => {
     if (!supabase) {
       throw new Error('Supabase browser client is not configured.');
     }
@@ -625,18 +453,30 @@ export default function DashboardPage() {
     setPurchasedBundleSlugs(Array.from(bundleSlugs));
     setPurchasedProductSlugs(Array.from(productSlugs));
     setDeliveryAccessLinks(Array.from(accessLinkMap.values()));
-  }
+  }, [supabase]);
 
-  function removeReferralParamFromUrl() {
+  const removeReferralParamFromUrl = useCallback(() => {
     const url = new URL(window.location.href);
 
     if (url.searchParams.has('ref')) {
       url.searchParams.delete('ref');
       window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
     }
-  }
+  }, []);
 
-  async function applyReferralCode(code: string, userId: string, isAutoApply = false) {
+  const applyReferralCode = useCallback(async ({
+    code,
+    userId,
+    fallbackCode,
+    currentReferralCode = '',
+    isAutoApply = false,
+  }: {
+    code: string;
+    userId: string;
+    fallbackCode: string;
+    currentReferralCode?: string;
+    isAutoApply?: boolean;
+  }) => {
     if (!supabase) {
       setReferralError('Supabase auth config missing.');
       return;
@@ -649,7 +489,7 @@ export default function DashboardPage() {
       return;
     }
 
-    if (referralCode && normalizedCode === referralCode.trim().toUpperCase()) {
+    if (currentReferralCode && normalizedCode === currentReferralCode.trim().toUpperCase()) {
       setReferralError('নিজের referral code ব্যবহার করা যাবে না।');
       setReferralMessage('');
       return;
@@ -710,37 +550,41 @@ export default function DashboardPage() {
 
     setReferralInput('');
     setReferralMessage(result.message);
-    await loadReferralState(userId, referralCode || buildFallbackReferralCode(userName, userEmail));
+    await loadReferralState(userId, fallbackCode);
 
     if (isAutoApply || normalizedCode) {
       removeReferralParamFromUrl();
     }
-  }
+  }, [loadReferralState, removeReferralParamFromUrl, supabase]);
 
   async function copyReferralLink() {
-    if (!referralCode) {
+    const absoluteReferralLink = getAbsoluteReferralLink(referralCode);
+
+    if (!absoluteReferralLink) {
       return;
     }
 
-    const referralLink = `${window.location.origin}/signup?ref=${encodeURIComponent(referralCode)}`;
-    await navigator.clipboard.writeText(referralLink);
+    await navigator.clipboard.writeText(absoluteReferralLink);
     setReferralMessage('Referral link copy হয়েছে।');
     setReferralError('');
   }
 
   async function copyPromoText() {
-    if (!referralCode) {
+    const absoluteReferralLink = getAbsoluteReferralLink(referralCode);
+
+    if (!absoluteReferralLink) {
       return;
     }
 
-    const referralLink = `${window.location.origin}/signup?ref=${encodeURIComponent(referralCode)}`;
-    const promoText = `দেশি কোর্সে join করলে প্রথম course-এ ১০% off পাবে। আমার referral link: ${referralLink}`;
+    const promoText = `দেশি কোর্সে join করলে প্রথম course-এ ১০% off পাবে। আমার referral link: ${absoluteReferralLink}`;
     await navigator.clipboard.writeText(promoText);
     setReferralMessage('Promo text copy হয়েছে।');
     setReferralError('');
   }
 
   function handleInviteFriends() {
+    const absoluteReferralLink = getAbsoluteReferralLink(referralCode);
+
     if (!absoluteReferralLink) {
       setReferralError('Referral link ready হলে invite পাঠাতে পারবেন।');
       setReferralMessage('');
@@ -768,15 +612,30 @@ export default function DashboardPage() {
     setReferralError('');
   }
 
-  useEffect(() => {
-    setAppOrigin(window.location.origin);
-    const params = new URLSearchParams(window.location.search);
-    const tab = params.get('tab');
+  function handleShareOnWhatsApp() {
+    const absoluteReferralLink = getAbsoluteReferralLink(referralCode);
 
-    if (tab && ['all', 'owned', 'refer', 'shop', 'bundle', 'support'].includes(tab)) {
-      setActiveTab(tab);
+    if (!absoluteReferralLink) {
+      return;
     }
-  }, []);
+
+    const shareMessage = `দেশি কোর্সে join করলে প্রথম course-এ ১০% off পাবে। আমার referral link: ${absoluteReferralLink}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(shareMessage)}`, '_blank', 'noopener,noreferrer');
+  }
+
+  function handleShareOnFacebook() {
+    const absoluteReferralLink = getAbsoluteReferralLink(referralCode);
+
+    if (!absoluteReferralLink) {
+      return;
+    }
+
+    window.open(
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(absoluteReferralLink)}`,
+      '_blank',
+      'noopener,noreferrer',
+    );
+  }
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -789,6 +648,31 @@ export default function DashboardPage() {
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadCourseAccessLinks() {
+      try {
+        const response = await fetch('/api/courses/access-links', { cache: 'no-store' });
+        const data = (await response.json()) as { links?: Record<string, string> };
+
+        if (isMounted) {
+          setCourseAccessLinks(data.links ?? {});
+        }
+      } catch {
+        if (isMounted) {
+          setCourseAccessLinks({});
+        }
+      }
+    }
+
+    void loadCourseAccessLinks();
+
+    return () => {
+      isMounted = false;
     };
   }, []);
 
@@ -849,7 +733,13 @@ export default function DashboardPage() {
 
         if (autoReferralCode) {
           setReferralInput(autoReferralCode);
-          await applyReferralCode(autoReferralCode, user.id, true);
+          await applyReferralCode({
+            code: autoReferralCode,
+            userId: user.id,
+            fallbackCode,
+            currentReferralCode: fallbackCode,
+            isAutoApply: true,
+          });
         }
       } else if (referralFromUrl) {
         removeReferralParamFromUrl();
@@ -861,7 +751,7 @@ export default function DashboardPage() {
     return () => {
       isMounted = false;
     };
-  }, [isAuthLoading, router, supabase, user]);
+  }, [applyReferralCode, isAuthLoading, loadPurchaseState, loadReferralState, removeReferralParamFromUrl, router, supabase, user]);
 
   async function handleSignOut() {
     if (!supabase) {
@@ -915,15 +805,6 @@ export default function DashboardPage() {
   });
   const samplePricing = getPricingPreview(100, walletBalance, welcomeDiscountUsesRemaining);
   const referralLink = referralCode ? `/signup?ref=${encodeURIComponent(referralCode)}` : '/signup';
-  const absoluteReferralLink = appOrigin && referralCode ? `${appOrigin}${referralLink}` : '';
-  const whatsappShareUrl = absoluteReferralLink
-    ? `https://wa.me/?text=${encodeURIComponent(
-        `দেশি কোর্সে join করলে প্রথম course-এ ১০% off পাবে। আমার referral link: ${absoluteReferralLink}`,
-      )}`
-    : '#';
-  const facebookShareUrl = absoluteReferralLink
-    ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(absoluteReferralLink)}`
-    : '#';
 
   return (
     <div className="min-h-dvh bg-gray-50 flex flex-col overflow-x-hidden lg:h-screen lg:flex-row lg:overflow-hidden">
@@ -945,9 +826,11 @@ export default function DashboardPage() {
             aria-expanded={isMobileProfileMenuOpen}
           >
             {userAvatar ? (
-              <img
+              <Image
                 src={userAvatar}
                 alt={userName}
+                width={36}
+                height={36}
                 className="h-full w-full object-cover"
                 referrerPolicy="no-referrer"
               />
@@ -1092,9 +975,11 @@ export default function DashboardPage() {
             <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden pr-2">
               <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-brand/10 bg-brand/10">
                 {userAvatar ? (
-                  <img
+                  <Image
                     src={userAvatar}
                     alt={userName}
+                    width={44}
+                    height={44}
                     className="h-full w-full object-cover"
                     referrerPolicy="no-referrer"
                   />
@@ -1410,7 +1295,7 @@ export default function DashboardPage() {
                           type="button"
                           onClick={handleInviteFriends}
                           className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
-                          disabled={!absoluteReferralLink}
+                          disabled={!referralCode}
                           aria-label="Send referral invite"
                         >
                           <Send className="h-4 w-4" />
@@ -1427,7 +1312,7 @@ export default function DashboardPage() {
                           <div className="min-w-0 flex-1 rounded-2xl bg-gray-50 px-4 py-3">
                             <p className="text-xs font-semibold text-gray-500">আপনার referral link</p>
                             <p className="mt-2 truncate text-sm font-medium text-gray-700">
-                              {absoluteReferralLink || 'Link preparing হচ্ছে...'}
+                              {referralCode ? referralLink : 'Link preparing হচ্ছে...'}
                             </p>
                           </div>
                           <button
@@ -1443,24 +1328,24 @@ export default function DashboardPage() {
                       </div>
 
                       <div className="mt-4 flex flex-wrap items-center gap-3">
-                        <a
-                          href={whatsappShareUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          aria-disabled={!absoluteReferralLink}
-                          className={`inline-flex h-11 w-11 items-center justify-center rounded-full border border-brand/10 bg-white text-brand transition hover:border-brand hover:bg-brand/5 ${absoluteReferralLink ? '' : 'pointer-events-none opacity-50'}`}
+                        <button
+                          type="button"
+                          onClick={handleShareOnWhatsApp}
+                          disabled={!referralCode}
+                          aria-label="Share on WhatsApp"
+                          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-brand/10 bg-white text-brand transition hover:border-brand hover:bg-brand/5 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <MessageCircle className="h-4 w-4" />
-                        </a>
-                        <a
-                          href={facebookShareUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          aria-disabled={!absoluteReferralLink}
-                          className={`inline-flex h-11 w-11 items-center justify-center rounded-full border border-brand/10 bg-white text-brand transition hover:border-brand hover:bg-brand/5 ${absoluteReferralLink ? '' : 'pointer-events-none opacity-50'}`}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleShareOnFacebook}
+                          disabled={!referralCode}
+                          aria-label="Share on Facebook"
+                          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-brand/10 bg-white text-brand transition hover:border-brand hover:bg-brand/5 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <Share2 className="h-4 w-4" />
-                        </a>
+                        </button>
                         <button
                           type="button"
                           onClick={copyPromoText}
@@ -1525,7 +1410,15 @@ export default function DashboardPage() {
                             />
                             <button
                               type="button"
-                              onClick={() => void applyReferralCode(referralInput, currentUserId)}
+                              onClick={() =>
+                                void applyReferralCode({
+                                  code: referralInput,
+                                  userId: currentUserId,
+                                  fallbackCode:
+                                    referralCode || buildFallbackReferralCode(userName, userEmail),
+                                  currentReferralCode: referralCode,
+                                })
+                              }
                               className="rounded-full bg-brand px-5 py-3 text-sm font-bold text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70"
                               disabled={isApplyingReferral || !currentUserId}
                             >
@@ -1757,7 +1650,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:gap-8 xl:grid-cols-3">
               {filteredCourses.map((course) => (
                 <motion.div 
-                  key={course.id}
+                  key={course.slug}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition flex flex-col"
@@ -1797,7 +1690,7 @@ export default function DashboardPage() {
                       {course.isOwned ? (
                         <div className="space-y-3">
                           <Link
-                            href={`/courses/${course.slug}`}
+                            href={courseAccessLinks[course.slug] || `/courses/${course.slug}`}
                             className="block w-full rounded-lg bg-brand py-2 text-center text-xs font-bold text-white transition hover:bg-brand-dark sm:rounded-xl sm:py-2.5 sm:text-sm"
                           >
                             চালিয়ে যান

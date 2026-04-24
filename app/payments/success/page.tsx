@@ -1,18 +1,32 @@
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import MetaPurchaseTracker from '@/components/MetaPurchaseTracker';
 import Footer from '@/components/Footer';
 import PaymentSuccessCartSync from '@/components/PaymentSuccessCartSync';
-import { finalizeZiniPayOrder } from '@/lib/payments';
+import { classifyPaymentStatus } from '@/lib/piprapay';
+import { finalizePipraPayOrder } from '@/lib/payments';
+
+interface PaymentResult {
+  ok: boolean;
+  message: string;
+  courseSlug?: string;
+  metaPurchaseEventId?: string;
+  metaPurchasePath?: string;
+  metaPurchaseCustomData?: Record<string, unknown>;
+}
 
 interface PaymentSuccessPageProps {
   searchParams: Promise<{
     orderId?: string;
-    invoiceId?: string;
-    invoice_id?: string;
-    val_id?: string;
-    valId?: string;
+    pp_id?: string;
+    status?: string;
+    payment_status?: string;
+    pp_status?: string;
+    transaction_ref?: string;
+    trx_id?: string;
+    transaction_id?: string;
     fromCart?: string;
   }>;
 }
@@ -20,14 +34,32 @@ interface PaymentSuccessPageProps {
 export default async function PaymentSuccessPage({ searchParams }: PaymentSuccessPageProps) {
   const params = await searchParams;
   const orderId = params.orderId ?? '';
-  const invoiceId =
-    params.invoiceId ?? params.invoice_id ?? params.val_id ?? params.valId ?? '';
+  const ppId = params.pp_id ?? '';
   const fromCart = params.fromCart === '1';
+  const redirectStatus =
+    params.pp_status ?? params.payment_status ?? params.status ?? '';
+  const classifiedStatus = classifyPaymentStatus(redirectStatus);
 
-  const result =
-    orderId && invoiceId
-      ? await finalizeZiniPayOrder(orderId, invoiceId)
+  if (
+    orderId &&
+    !ppId &&
+    (classifiedStatus.kind === 'cancelled' || classifiedStatus.kind === 'failed')
+  ) {
+    redirect(`/payments/cancel?orderId=${orderId}`);
+  }
+
+  const result: PaymentResult =
+    orderId && ppId
+      ? await finalizePipraPayOrder(orderId, ppId)
       : { ok: false, message: 'Payment info পাওয়া যায়নি।' };
+
+  if (
+    orderId &&
+    !result.ok &&
+    (classifiedStatus.kind === 'cancelled' || classifiedStatus.kind === 'failed')
+  ) {
+    redirect(`/payments/cancel?orderId=${orderId}`);
+  }
 
   return (
     <main className="min-h-screen bg-white">

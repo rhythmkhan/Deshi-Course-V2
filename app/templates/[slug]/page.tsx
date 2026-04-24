@@ -10,8 +10,11 @@ import MetaViewContentTracker from '@/components/MetaViewContentTracker';
 import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
 import PublicItemCheckoutPanel from '@/components/PublicItemCheckoutPanel';
+import {
+  getPublishedProductDetailBySlug,
+  listPublishedProducts,
+} from '@/lib/content-store';
 import { buildMetaContentType } from '@/lib/meta';
-import { getAllProductDetailSlugs, getProductDetailBySlug } from '@/lib/product-details';
 import {
   buildBreadcrumbSchema,
   buildCommercialItemSchema,
@@ -24,17 +27,18 @@ interface TemplateDetailPageProps {
 }
 
 export const revalidate = 86400;
-export const dynamicParams = false;
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
-  return getAllProductDetailSlugs().map((slug) => ({ slug }));
+  const products = await listPublishedProducts();
+  return products.map((product) => ({ slug: product.slug }));
 }
 
 export async function generateMetadata({
   params,
 }: TemplateDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const product = getProductDetailBySlug(slug);
+  const product = await getPublishedProductDetailBySlug(slug);
 
   if (!product) {
     return buildMetadata({
@@ -62,7 +66,7 @@ export async function generateMetadata({
 
 export default async function TemplateDetailPage({ params }: TemplateDetailPageProps) {
   const { slug } = await params;
-  const product = getProductDetailBySlug(slug);
+  const product = await getPublishedProductDetailBySlug(slug);
 
   if (!product) {
     notFound();

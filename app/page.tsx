@@ -3,7 +3,6 @@ import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
 import Stats from '@/components/Stats';
 import Features from '@/components/Features';
-import Categories from '@/components/Categories';
 import FeaturedCourses from '@/components/FeaturedCourses';
 import Infographic from '@/components/Infographic';
 import ProductShowcase from '@/components/ProductShowcase';
@@ -13,15 +12,21 @@ import LatestBlog from '@/components/LatestBlog';
 import CTA from '@/components/CTA';
 import Footer from '@/components/Footer';
 import StructuredData from '@/components/StructuredData';
-import { FEATURED_COURSES } from '@/lib/course-catalog';
-import { BLOG_POSTS } from '@/lib/blog-data';
-import { BUNDLE_CATALOG } from '@/lib/bundle-catalog';
+import {
+  getHomepageSection,
+  listActiveAnnouncementBanners,
+  listFeaturedCourses,
+  listPublishedFaqEntries,
+  listPublishedBlogPosts,
+  listPublishedBundles,
+  listPublishedProducts,
+  listPublishedTestimonials,
+} from '@/lib/content-store';
 import {
   buildBreadcrumbSchema,
   buildCollectionPageSchema,
   buildMetadata,
 } from '@/lib/seo';
-import { SHOP_CATALOG } from '@/lib/shop-catalog';
 
 export const metadata: Metadata = buildMetadata({
   title: 'বাংলা Online Course, Templates, Bundles ও Skill Learning | দেশি কোর্স',
@@ -40,25 +45,49 @@ export const metadata: Metadata = buildMetadata({
 
 export const revalidate = 86400;
 
-export default function Home() {
+export default async function Home() {
+  const [
+    featuredCourses,
+    bundles,
+    products,
+    posts,
+    heroSection,
+    featureSection,
+    supportSection,
+    testimonials,
+    siteFaq,
+    banners,
+  ] = await Promise.all([
+    listFeaturedCourses(),
+    listPublishedBundles(),
+    listPublishedProducts(),
+    listPublishedBlogPosts(),
+    getHomepageSection('hero'),
+    getHomepageSection('features'),
+    getHomepageSection('support'),
+    listPublishedTestimonials(),
+    listPublishedFaqEntries('site'),
+    listActiveAnnouncementBanners(),
+  ]);
+
   const homepageSchema = buildCollectionPageSchema(
     'দেশি কোর্স হোমপেজ',
     'বাংলা online course, bundle, template এবং skill learning collection',
     '/',
     [
-      ...FEATURED_COURSES.slice(0, 6).map((course) => ({
+      ...featuredCourses.slice(0, 6).map((course) => ({
         name: course.title,
         path: `/courses/${course.slug}`,
       })),
-      ...BUNDLE_CATALOG.slice(0, 2).map((bundle) => ({
+      ...bundles.slice(0, 2).map((bundle) => ({
         name: bundle.title,
         path: `/bundles/${bundle.slug}`,
       })),
-      ...SHOP_CATALOG.slice(0, 2).map((product) => ({
+      ...products.slice(0, 2).map((product) => ({
         name: product.title,
         path: `/templates/${product.slug}`,
       })),
-      ...BLOG_POSTS.slice(0, 3).map((post) => ({
+      ...posts.slice(0, 3).map((post) => ({
         name: post.title,
         path: `/blog/${post.slug}`,
       })),
@@ -72,16 +101,27 @@ export default function Home() {
       />
       <StructuredData data={homepageSchema} />
       <Navbar />
-      <Hero />
+      {banners.length > 0 ? (
+        <section className="border-b border-brand/10 bg-brand/5 px-4 py-3 text-center text-sm text-brand">
+          <span className="font-semibold">{banners[0].title}</span>
+          {banners[0].body ? <span className="ml-2 text-gray-600">{banners[0].body}</span> : null}
+        </section>
+      ) : null}
+      <Hero sectionData={heroSection} />
       <Stats />
-      <Features />
-      <Categories />
-      <FeaturedCourses mobileLimit={4} desktopLimit={3} />
-      <Infographic mobileLimit={4} desktopLimit={3} />
-      <ProductShowcase mobileLimit={4} desktopLimit={3} />
-      <Testimonials />
-      <Support />
-      <LatestBlog mobileLimit={2} desktopLimit={3} />
+      <Features sectionData={featureSection} />
+      <FeaturedCourses courses={featuredCourses} mobileLimit={4} desktopLimit={3} />
+      <Infographic bundles={bundles} mobileLimit={4} desktopLimit={3} />
+      <ProductShowcase items={products} mobileLimit={4} desktopLimit={3} />
+      <Testimonials testimonials={testimonials} />
+      <Support
+        sectionData={supportSection}
+        faqItems={siteFaq.map((entry) => ({
+          question: entry.question,
+          answer: entry.answer,
+        }))}
+      />
+      <LatestBlog posts={posts} mobileLimit={2} desktopLimit={3} />
       <CTA />
       <Footer />
     </main>

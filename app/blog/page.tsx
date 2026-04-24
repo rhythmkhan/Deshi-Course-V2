@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { BLOG_POSTS } from '@/lib/blog-data';
+import { listPublishedBlogPosts } from '@/lib/content-store';
 import { Calendar, User, ArrowRight } from 'lucide-react';
 import StructuredData from '@/components/StructuredData';
 import {
@@ -29,12 +29,13 @@ export const metadata: Metadata = buildMetadata({
 
 export const revalidate = 43200;
 
-export default function BlogPage() {
+export default async function BlogPage() {
+  const posts = await listPublishedBlogPosts();
   const schema = buildCollectionPageSchema(
     'দেশি কোর্স ব্লগ',
     'বাংলা skill blog, AI guide এবং course tips collection',
     '/blog',
-    BLOG_POSTS.map((post) => ({
+    posts.map((post) => ({
       name: post.title,
       path: `/blog/${post.slug}`,
     })),
@@ -61,7 +62,7 @@ export default function BlogPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-            {BLOG_POSTS.map((post) => (
+            {posts.map((post) => (
               <article key={post.id} className="group flex flex-col bg-white rounded-3xl border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
                 <Link href={`/blog/${post.slug}`} className="relative h-64 overflow-hidden">
                   <Image

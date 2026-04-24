@@ -224,7 +224,7 @@ export default function CartPageContent() {
     });
 
     try {
-      const response = await fetch('/api/payments/zinipay/create', {
+      const response = await fetch('/api/payments/piprapay/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

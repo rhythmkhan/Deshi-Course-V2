@@ -55,6 +55,7 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
   const [couponError, setCouponError] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<CouponPricingRule | null>(null);
   const [purchaseDetails, setPurchaseDetails] = useState<PurchaseDetails | null>(null);
+  const [courseAccessHref, setCourseAccessHref] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -119,6 +120,31 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
       isMounted = false;
     };
   }, [course.slug, isAuthLoading, supabase, user]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadCourseAccessHref() {
+      try {
+        const response = await fetch('/api/courses/access-links');
+        const data = (await response.json()) as { links?: Record<string, string> };
+
+        if (isMounted) {
+          setCourseAccessHref(data.links?.[course.slug] ?? '');
+        }
+      } catch {
+        if (isMounted) {
+          setCourseAccessHref('');
+        }
+      }
+    }
+
+    void loadCourseAccessHref();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [course.slug]);
 
   const preview = getPricingPreview(
     course.price,
@@ -242,7 +268,7 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
         return;
       }
 
-      const response = await fetch('/api/payments/zinipay/create', {
+      const response = await fetch('/api/payments/piprapay/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -447,7 +473,11 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
       <div className="mt-6 space-y-3">
         {pricingState.isOwned ? (
           <Link
-            href={shouldShowToolsCta ? '/templates' : `/courses/${course.slug}`}
+            href={
+              shouldShowToolsCta
+                ? '/templates'
+                : purchaseDetails?.accessHref || courseAccessHref || `/courses/${course.slug}`
+            }
             className="block w-full rounded-2xl bg-brand px-6 py-3.5 text-center font-bold text-white shadow-lg transition hover:bg-brand-dark"
           >
             {shouldShowToolsCta ? 'tools কিনুন' : 'কোর্সে যান'}

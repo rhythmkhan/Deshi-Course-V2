@@ -46,6 +46,12 @@ interface CouponRow {
   redeemed_at: string | null;
 }
 
+interface CouponItemRuleRow {
+  mode: 'include' | 'exclude';
+  item_type: CouponItemType;
+  item_slug: string;
+}
+
 interface CouponPricedItemLike {
   type: CouponItemType;
   slug: string;
@@ -89,13 +95,25 @@ function itemTypeToScope(itemType: CouponItemType): CouponScope {
 function getMatchingItems(
   pricedItems: CouponPricedItemLike[],
   coupon: Pick<CouponPricingRule, 'appliesTo' | 'targetItemType' | 'targetSlug'>,
+  itemRules: CouponItemRuleRow[] = [],
 ) {
+  const includeRules = itemRules.filter((rule) => rule.mode === 'include');
+  const excludeRules = itemRules.filter((rule) => rule.mode === 'exclude');
+
   return pricedItems.filter((item) => {
     const matchesScope = coupon.appliesTo === 'all' || coupon.appliesTo === item.type;
     const matchesType = !coupon.targetItemType || coupon.targetItemType === item.type;
     const matchesSlug = !coupon.targetSlug || coupon.targetSlug === item.slug;
+    const matchesInclude =
+      includeRules.length === 0 ||
+      includeRules.some(
+        (rule) => rule.item_type === item.type && rule.item_slug === item.slug,
+      );
+    const matchesExclude = excludeRules.some(
+      (rule) => rule.item_type === item.type && rule.item_slug === item.slug,
+    );
 
-    return matchesScope && matchesType && matchesSlug;
+    return matchesScope && matchesType && matchesSlug && matchesInclude && !matchesExclude;
   });
 }
 
@@ -146,8 +164,9 @@ export function getCouponEligibleSubtotal(
   pricedItems: CouponPricedItemLike[],
   coupon: Pick<CouponPricingRule, 'appliesTo' | 'targetItemType' | 'targetSlug'>,
   referralDiscount: number,
+  itemRules: CouponItemRuleRow[] = [],
 ) {
-  const matchingItems = getMatchingItems(pricedItems, coupon);
+  const matchingItems = getMatchingItems(pricedItems, coupon, itemRules);
   const subtotal = matchingItems.reduce((total, item) => total + item.effectivePrice, 0);
   const hasCourseItems = matchingItems.some((item) => item.type === 'course');
   const adjustedSubtotal = hasCourseItems ? Math.max(subtotal - referralDiscount, 0) : subtotal;
@@ -262,10 +281,21 @@ export async function resolveCouponForCheckout(params: {
   }
 
   const pricingRule = mapCouponRule(couponRow);
+  const { data: couponRuleRows, error: couponRuleError } = await supabase
+    .from('coupon_item_rules')
+    .select('mode, item_type, item_slug')
+    .eq('coupon_id', couponRow.id);
+
+  if (couponRuleError && !couponRuleError.message.toLowerCase().includes('relation')) {
+    throw new Error('Coupon rule lookup করা যায়নি।');
+  }
+
+  const itemRules = (couponRuleRows as CouponItemRuleRow[] | null) ?? [];
   const eligibleSubtotal = getCouponEligibleSubtotal(
     params.pricedItems,
     pricingRule,
     params.referralDiscount,
+    itemRules,
   );
 
   if (eligibleSubtotal <= 0) {
@@ -280,17 +310,28 @@ export async function resolveCouponForCheckout(params: {
   }
 
   if (couponRow.usage_limit !== null) {
-    const { count, error: usageError } = await supabase
-      .from('orders')
+    const usageResult = await supabase
+      .from('coupon_redemptions')
       .select('id', { count: 'exact', head: true })
-      .eq('coupon_code', normalizedCode)
-      .eq('payment_status', 'paid');
+      .eq('coupon_code', normalizedCode);
 
-    if (usageError) {
-      throw new Error('Coupon usage check করা যায়নি।');
+    let count = usageResult.count ?? 0;
+
+    if (usageResult.error) {
+      const fallbackUsage = await supabase
+        .from('orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('coupon_code', normalizedCode)
+        .eq('payment_status', 'paid');
+
+      if (fallbackUsage.error) {
+        throw new Error('Coupon usage check করা যায়নি।');
+      }
+
+      count = fallbackUsage.count ?? 0;
     }
 
-    if ((count ?? 0) >= couponRow.usage_limit) {
+    if (count >= couponRow.usage_limit) {
       return { coupon: null, error: 'এই coupon-এর usage limit শেষ।' };
     }
   }
@@ -300,18 +341,30 @@ export async function resolveCouponForCheckout(params: {
       return { coupon: null, error: 'এই coupon apply করতে sign in করুন।' };
     }
 
-    const { count, error: perUserError } = await supabase
-      .from('orders')
+    const userUsageResult = await supabase
+      .from('coupon_redemptions')
       .select('id', { count: 'exact', head: true })
       .eq('coupon_code', normalizedCode)
-      .eq('payment_status', 'paid')
       .eq('user_id', params.userId);
 
-    if (perUserError) {
-      throw new Error('Coupon usage check করা যায়নি।');
+    let count = userUsageResult.count ?? 0;
+
+    if (userUsageResult.error) {
+      const fallbackUsage = await supabase
+        .from('orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('coupon_code', normalizedCode)
+        .eq('payment_status', 'paid')
+        .eq('user_id', params.userId);
+
+      if (fallbackUsage.error) {
+        throw new Error('Coupon usage check করা যায়নি।');
+      }
+
+      count = fallbackUsage.count ?? 0;
     }
 
-    if ((count ?? 0) >= couponRow.per_user_limit) {
+    if (count >= couponRow.per_user_limit) {
       return { coupon: null, error: 'আপনি এই coupon-এর usage limit শেষ করেছেন।' };
     }
   }
@@ -347,4 +400,65 @@ export async function redeemCouponForOrder(params: { code: string; orderId: stri
   }
 
   return data;
+}
+
+export async function redeemCouponForVerifiedOrder(params: {
+  code: string;
+  orderId: string;
+  userId: string;
+  discountAmount?: number;
+}) {
+  const normalizedCode = normalizeCouponCode(params.code);
+
+  if (!normalizedCode) {
+    throw new Error('Coupon code missing');
+  }
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from('coupons')
+    .select(
+      'id, code, single_use, redeemed_at, redeemed_order_id, usage_limit, per_user_limit',
+    )
+    .eq('code', normalizedCode)
+    .maybeSingle();
+
+  if (error || !data) {
+    throw new Error('Coupon invalid or unavailable');
+  }
+
+  if (data.single_use && data.redeemed_at && data.redeemed_order_id !== params.orderId) {
+    throw new Error('Coupon already redeemed');
+  }
+
+  const { error: redemptionError } = await supabase.from('coupon_redemptions').upsert(
+    {
+      coupon_id: data.id,
+      order_id: params.orderId,
+      user_id: params.userId,
+      coupon_code: normalizedCode,
+      discount_amount: params.discountAmount ?? 0,
+    },
+    { onConflict: 'coupon_id,order_id' },
+  );
+
+  if (redemptionError && !redemptionError.message.toLowerCase().includes('relation')) {
+    throw new Error(redemptionError.message);
+  }
+
+  if (data.single_use) {
+    const { error: updateError } = await supabase
+      .from('coupons')
+      .update({
+        redeemed_at: data.redeemed_at ?? nowIso(),
+        redeemed_order_id: params.orderId,
+      })
+      .eq('id', data.id);
+
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+  }
+
+  return { ok: true };
 }

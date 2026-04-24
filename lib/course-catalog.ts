@@ -19,8 +19,8 @@ export interface CourseSummary {
 }
 
 const COURSE_IMAGE_BY_SLUG: Record<string, string> = {
-  'n8n-automation-mastery': '/images/courses/n8n-automation-mastery.webp',
-  'vibe-coding-mastery': '/images/courses/vibe-coding-mastery.webp',
+  'n8n-automation-mastery': '/images/courses/n8n-automation-mastery-v4.webp',
+  'vibe-coding-mastery': '/images/courses/n8n-automation-mastery-v3.webp',
   'phone-ai-video-editing': '/images/courses/phone-ai-video-editing.webp',
   'capcut-pc-video-editing': '/images/courses/capcut-pc-video-editing.webp',
   'ai-money-making-mastery': '/images/courses/ai-money-making-mastery.webp',
