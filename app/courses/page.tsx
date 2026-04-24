@@ -2,10 +2,8 @@ import type { Metadata } from 'next';
 import React from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import PageHeader from '@/components/PageHeader';
-import FeaturedCourses from '@/components/FeaturedCourses';
-import Categories from '@/components/Categories';
-import { COURSE_CATALOG } from '@/lib/course-catalog';
+import CoursesCatalogBrowser from '@/components/CoursesCatalogBrowser';
+import { listPublishedCourses } from '@/lib/content-store';
 import StructuredData from '@/components/StructuredData';
 import {
   buildBreadcrumbSchema,
@@ -30,12 +28,13 @@ export const metadata: Metadata = buildMetadata({
 
 export const revalidate = 86400;
 
-export default function CoursesPage() {
+export default async function CoursesPage() {
+  const courses = await listPublishedCourses();
   const schema = buildCollectionPageSchema(
     'সব কোর্স',
     'বাংলা online course collection',
     '/courses',
-    COURSE_CATALOG.map((course) => ({
+    courses.map((course) => ({
       name: course.title,
       path: `/courses/${course.slug}`,
     })),
@@ -51,12 +50,11 @@ export default function CoursesPage() {
       />
       <StructuredData data={schema} />
       <Navbar />
-      <PageHeader
+      <CoursesCatalogBrowser
+        courses={courses}
         title="কোর্সসমূহ"
         subtitle="সাইটের সব live course collection থেকে আপনার প্রয়োজনের skill বেছে নিন।"
       />
-      <Categories />
-      <FeaturedCourses courses={COURSE_CATALOG} />
       <Footer />
     </main>
   );

@@ -2,7 +2,8 @@ const fs = require('fs');
 const path = require('path');
 
 const rootDir = path.resolve(__dirname, '..');
-const standaloneDir = path.join(rootDir, '.next', 'standalone');
+const distDir = process.env.NEXT_DIST_DIR || '.next';
+const standaloneDir = path.join(rootDir, distDir, 'standalone');
 const standaloneServer = path.join(standaloneDir, 'server.js');
 
 function loadEnvFile(filePath) {
@@ -57,7 +58,7 @@ loadEnvFile(path.join(rootDir, '.env.local'));
 loadEnvFile(path.join(rootDir, '.env'));
 
 copyIfExists(path.join(rootDir, 'public'), path.join(standaloneDir, 'public'));
-copyIfExists(path.join(rootDir, '.next', 'static'), path.join(standaloneDir, '.next', 'static'));
+copyIfExists(path.join(rootDir, distDir, 'static'), path.join(standaloneDir, '.next', 'static'));
 
 process.chdir(standaloneDir);
 require(standaloneServer);

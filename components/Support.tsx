@@ -3,8 +3,44 @@ import { MessageCircle, Mail, ArrowRight } from 'lucide-react';
 import FaqAccordion from '@/components/FaqAccordion';
 import { FAQ_ITEMS } from '@/lib/faq-data';
 
-export default function Support() {
-  const contactMethods = [
+interface SupportSectionData {
+  title?: string | null;
+  subtitle?: string | null;
+  body?: Record<string, unknown>;
+}
+
+export default function Support({
+  sectionData,
+  faqItems = FAQ_ITEMS,
+}: {
+  sectionData?: SupportSectionData | null;
+  faqItems?: Array<{ question: string; answer: string }>;
+}) {
+  const body = sectionData?.body ?? {};
+  const contactMethods = Array.isArray(body.contactMethods)
+    ? (body.contactMethods as Array<Record<string, unknown>>).map((method) => ({
+        icon:
+          method.theme === 'email'
+            ? <Mail className="w-6 h-6" />
+            : <MessageCircle className="w-6 h-6" />,
+        title:
+          typeof method.title === 'string' ? method.title : 'Support',
+        description:
+          typeof method.description === 'string' ? method.description : '',
+        contact:
+          typeof method.contact === 'string' ? method.contact : '',
+        action:
+          typeof method.action === 'string' ? method.action : 'Open',
+        href:
+          typeof method.href === 'string' ? method.href : '/contact',
+        color:
+          method.theme === 'whatsapp'
+            ? 'bg-[#25D366]/10 text-[#25D366]'
+            : method.theme === 'messenger'
+              ? 'bg-[#0084FF]/10 text-[#0084FF]'
+              : 'bg-purple-50 text-purple-600',
+      }))
+    : [
     {
       icon: <MessageCircle className="w-6 h-6" />,
       title: 'সরাসরি WhatsApp-এ মেসেজ করুন',
@@ -32,14 +68,18 @@ export default function Support() {
       href: 'mailto:info@deshicourse.xyz',
       color: 'bg-purple-50 text-purple-600',
     },
-  ];
+    ];
+  const title = sectionData?.title || 'আপনার কি কোনো সাহায্য প্রয়োজন?';
+  const subtitle =
+    sectionData?.subtitle ||
+    'আমাদের সাপোর্ট টিম সবসময় আপনার পাশে আছে। যেকোনো প্রশ্ন বা সমস্যার জন্য আমাদের সাথে যোগাযোগ করুন।';
 
   return (
     <section className="deferred-section bg-white py-16 sm:py-20 lg:py-24" id="support">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-20">
         <div className="mb-10 text-center sm:mb-12 lg:mb-16">
-          <h2 className="mb-4 text-3xl font-bold sm:text-4xl">আপনার কি কোনো <span className="text-brand">সাহায্য প্রয়োজন?</span></h2>
-          <p className="mx-auto max-w-2xl text-sm text-gray-600 sm:text-base">আমাদের সাপোর্ট টিম সবসময় আপনার পাশে আছে। যেকোনো প্রশ্ন বা সমস্যার জন্য আমাদের সাথে যোগাযোগ করুন।</p>
+          <h2 className="mb-4 text-3xl font-bold sm:text-4xl">{title}</h2>
+          <p className="mx-auto max-w-2xl text-sm text-gray-600 sm:text-base">{subtitle}</p>
         </div>
 
         <div className="mb-12 grid gap-5 md:grid-cols-3 md:gap-8 lg:mb-16">
@@ -76,7 +116,7 @@ export default function Support() {
           </div>
           <div className="w-full lg:w-1/2">
             <FaqAccordion
-              items={FAQ_ITEMS.slice(0, 3)}
+              items={faqItems.slice(0, 3)}
               containerClassName="grid gap-3 lg:gap-4"
               itemClassName="overflow-hidden rounded-2xl border border-gray-100 bg-white transition hover:border-brand"
               buttonClassName="flex w-full items-center justify-between gap-4 p-4 text-left sm:p-5"

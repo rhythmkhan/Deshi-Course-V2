@@ -9,7 +9,7 @@ import {
   buildCollectionPageSchema,
   buildMetadata,
 } from '@/lib/seo';
-import { SHOP_CATALOG } from '@/lib/shop-catalog';
+import { listPublishedProducts } from '@/lib/content-store';
 
 export const metadata: Metadata = buildMetadata({
   title: 'প্রোডাক্ট ও Templates | n8n Templates, Prompt Library, Digital Resource | দেশি কোর্স',
@@ -27,12 +27,13 @@ export const metadata: Metadata = buildMetadata({
 
 export const revalidate = 86400;
 
-export default function TemplatesPage() {
+export default async function TemplatesPage() {
+  const products = await listPublishedProducts();
   const schema = buildCollectionPageSchema(
     'প্রোডাক্টসমূহ',
     'বাংলা digital product এবং template collection',
     '/templates',
-    SHOP_CATALOG.map((product) => ({
+    products.map((product) => ({
       name: product.title,
       path: `/templates/${product.slug}`,
     })),
@@ -52,7 +53,7 @@ export default function TemplatesPage() {
         title="প্রোডাক্টসমূহ"
         subtitle="Ready-made resource, digital pack আর instant access product collection এখানেই দেখুন।"
       />
-      <ProductShowcase />
+      <ProductShowcase items={products} />
       <Footer />
     </main>
   );

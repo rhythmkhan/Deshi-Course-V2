@@ -1,6 +1,9 @@
 .next
+.next-build
+.vercel
 .codex-live
 node_modules
+tmp
 .env*
 *.log
 *.err
@@ -8,6 +11,7 @@ node_modules
 *.tmp
 *.tsbuildinfo
 lighthouse-home.json
+metadata.json
 Purple Modern AI Prompt Services Flyer (1200 x 800 px)_20260311_014227_0000.png
 public/hero.png
 public/images/offers/vibe-coding-mastery.png

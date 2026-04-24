@@ -5,10 +5,9 @@ import Link from 'next/link';
 import { AlertCircle, ArrowLeft, LoaderCircle, Mail, Send } from 'lucide-react';
 import { motion } from 'motion/react';
 import BrandLogo from '@/components/BrandLogo';
-import { createClient, isBrowserSupabaseConfigured } from '@/lib/supabase/browser';
+import { isBrowserSupabaseConfigured } from '@/lib/supabase/browser';
 
 export default function ForgotPasswordPage() {
-  const supabase = createClient();
   const isSupabaseConfigured = isBrowserSupabaseConfigured();
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,22 +20,27 @@ export default function ForgotPasswordPage() {
     setMessage('');
     setErrorMessage('');
 
-    if (!supabase) {
-      setErrorMessage('Auth system configure করা নেই। পরে আবার চেষ্টা করুন।');
+    const response = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+      }),
+    });
+    const data = (await response.json()) as {
+      error?: string;
+      message?: string;
+    };
+
+    if (!response.ok) {
+      setErrorMessage(data.error || 'Reset link পাঠানো যায়নি।');
       setIsSubmitting(false);
       return;
     }
 
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent('/update-password')}`;
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-
-    if (error) {
-      setErrorMessage(error.message);
-      setIsSubmitting(false);
-      return;
-    }
-
-    setMessage('পাসওয়ার্ড reset link আপনার ইমেইলে পাঠানো হয়েছে।');
+    setMessage(data.message || 'পাসওয়ার্ড reset link আপনার ইমেইলে পাঠানো হয়েছে।');
     setIsSubmitting(false);
   }
 

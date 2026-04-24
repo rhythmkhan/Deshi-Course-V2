@@ -1,7 +1,24 @@
 import { BookOpen, CheckCircle, Briefcase } from 'lucide-react';
 
-export default function Features() {
-  const features = [
+interface FeaturesSectionData {
+  title?: string | null;
+  subtitle?: string | null;
+  body?: Record<string, unknown>;
+}
+
+export default function Features({ sectionData }: { sectionData?: FeaturesSectionData | null }) {
+  const body = sectionData?.body ?? {};
+  const features = Array.isArray(body.items)
+    ? (body.items as Array<Record<string, unknown>>).map((item, index) => ({
+        id: typeof item.id === 'string' ? item.id : String(index + 1).padStart(2, '0'),
+        title: typeof item.title === 'string' ? item.title : `ধাপ ${index + 1}`,
+        description:
+          typeof item.description === 'string' ? item.description : '',
+        icon:
+          index % 3 === 0 ? <BookOpen className="w-8 h-8" /> : index % 3 === 1 ? <CheckCircle className="w-8 h-8" /> : <Briefcase className="w-8 h-8" />,
+        color: 'bg-purple-100',
+      }))
+    : [
     {
       id: '০১',
       title: 'শিখুন',
@@ -23,13 +40,17 @@ export default function Features() {
       icon: <Briefcase className="w-8 h-8" />,
       color: 'bg-purple-100',
     },
-  ];
+    ];
+  const title = sectionData?.title || 'আমাদের কোর্স থেকে কেন শিখবেন?';
+  const subtitle =
+    sectionData?.subtitle ||
+    'আমরা মানসম্পন্ন শিক্ষা এবং ব্যবহারিক দক্ষতার ওপর গুরুত্ব দিই যা আপনাকে বর্তমান কর্মক্ষেত্রে সফল হতে সাহায্য করবে।';
 
   return (
     <section className="deferred-section py-16 sm:py-20 lg:py-24">
       <div className="max-w-7xl mx-auto mb-10 px-4 text-center sm:mb-12 sm:px-6 lg:mb-16 lg:px-20">
-        <h2 className="mb-4 text-3xl font-bold sm:text-4xl">আমাদের কোর্স থেকে <span className="text-brand">কেন শিখবেন?</span></h2>
-        <p className="mx-auto max-w-2xl text-sm text-gray-600 sm:text-base">আমরা মানসম্পন্ন শিক্ষা এবং ব্যবহারিক দক্ষতার ওপর গুরুত্ব দিই যা আপনাকে বর্তমান কর্মক্ষেত্রে সফল হতে সাহায্য করবে।</p>
+        <h2 className="mb-4 text-3xl font-bold sm:text-4xl">{title}</h2>
+        <p className="mx-auto max-w-2xl text-sm text-gray-600 sm:text-base">{subtitle}</p>
       </div>
       
       <div className="max-w-7xl mx-auto grid gap-5 px-4 sm:px-6 md:grid-cols-3 md:gap-8 lg:gap-10 lg:px-20">

@@ -1,44 +1,77 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { isAdminEmail } from '@/lib/admin-access';
 import { AlertCircle, ArrowRight, LoaderCircle, Lock, Mail } from 'lucide-react';
 import { motion } from 'motion/react';
 import BrandLogo from '@/components/BrandLogo';
 import { createClient, isBrowserSupabaseConfigured } from '@/lib/supabase/browser';
 
-export default function SignInPage() {
+function SignInPageFallback() {
+  return (
+    <main className="min-h-screen bg-purple-50 p-4 sm:flex sm:items-center sm:justify-center sm:p-6">
+      <div className="relative w-full max-w-md overflow-hidden rounded-[2rem] bg-white p-5 shadow-2xl sm:rounded-[2.5rem] sm:p-8 lg:p-10">
+        <div className="mb-8 text-center sm:mb-10">
+          <BrandLogo size="md" className="mb-6 justify-center" />
+          <h2 className="text-2xl font-bold text-gray-900">স্বাগতম!</h2>
+          <p className="text-gray-500">সাইন ইন ফর্ম লোড হচ্ছে...</p>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function SignInPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const isSupabaseConfigured = isBrowserSupabaseConfigured();
-  const [redirectTarget, setRedirectTarget] = useState('/dashboard');
+  const redirectTarget = useMemo(() => {
+    const redirect = searchParams.get('redirect');
+    return redirect && redirect.startsWith('/') && !redirect.startsWith('//')
+      ? redirect
+      : '/dashboard';
+  }, [searchParams]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState(() => {
+    const error = searchParams.get('error');
+    const reason = searchParams.get('reason');
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const redirect = params.get('redirect');
-    const error = params.get('error');
-    const reason = params.get('reason');
-
-    if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
-      setRedirectTarget(redirect);
-    }
-
-    if (error === 'auth_callback_failed') {
-      if (reason === 'missing_auth_code') {
-        setErrorMessage('সাইন ইন লিংকটি অসম্পূর্ণ ছিল। আবার চেষ্টা করুন।');
-      } else if (reason) {
-        setErrorMessage(`সাইন ইন সম্পন্ন করা যায়নি: ${reason}`);
-      } else {
-        setErrorMessage('সাইন ইন সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।');
+    if (error === 'access_blocked') {
+      if (reason === 'ip_blocked') {
+        return 'এই network/IP থেকে access temporarily blocked করা হয়েছে।';
       }
+
+      if (reason) {
+        return reason;
+      }
+
+      return 'এই account দিয়ে এখন sign in করা যাবে না।';
     }
-  }, []);
+
+    if (error === 'session_revoked') {
+      return 'নিরাপত্তার কারণে আবার sign in করতে হবে।';
+    }
+
+    if (error !== 'auth_callback_failed') {
+      return '';
+    }
+
+    if (reason === 'missing_auth_code') {
+      return 'সাইন ইন লিংকটি অসম্পূর্ণ ছিল। আবার চেষ্টা করুন।';
+    }
+
+    if (reason) {
+      return `সাইন ইন সম্পন্ন করা যায়নি: ${reason}`;
+    }
+
+    return 'সাইন ইন সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।';
+  });
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -52,18 +85,29 @@ export default function SignInPage() {
       return;
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const response = await fetch('/api/auth/sign-in', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        password,
+        redirectTo: redirectTarget,
+      }),
     });
+    const data = (await response.json()) as {
+      error?: string;
+      redirectTo?: string;
+    };
 
-    if (error) {
-      setErrorMessage(error.message);
+    if (!response.ok) {
+      setErrorMessage(data.error || 'Sign in করা যায়নি।');
       setIsSubmitting(false);
       return;
     }
 
-    router.push(redirectTarget);
+    router.push(data.redirectTo || (isAdminEmail(email) ? '/admin' : redirectTarget));
     router.refresh();
   }
 
@@ -216,5 +260,13 @@ export default function SignInPage() {
         <div className="absolute -bottom-20 -left-20 h-40 w-40 rounded-full bg-brand/5" />
       </motion.div>
     </main>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<SignInPageFallback />}>
+      <SignInPageContent />
+    </Suspense>
   );
 }

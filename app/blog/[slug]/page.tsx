@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import StructuredData from '@/components/StructuredData';
-import { BLOG_POSTS } from '@/lib/blog-data';
+import { getPublishedBlogPostBySlug, listPublishedBlogPosts } from '@/lib/content-store';
 import { Calendar, User, ArrowLeft, Tag } from 'lucide-react';
 import {
   buildBlogPostingSchema,
@@ -20,11 +20,11 @@ interface PageProps {
 }
 
 export const revalidate = 43200;
-export const dynamicParams = false;
+export const dynamicParams = true;
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const post = BLOG_POSTS.find((entry) => entry.slug === slug);
+  const post = await getPublishedBlogPostBySlug(slug);
 
   if (!post) {
     return buildMetadata({
@@ -47,7 +47,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function BlogPostPage({ params }: PageProps) {
   const { slug } = await params;
-  const post = BLOG_POSTS.find((p) => p.slug === slug);
+  const post = await getPublishedBlogPostBySlug(slug);
 
   if (!post) {
     notFound();

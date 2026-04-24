@@ -1,37 +1,47 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { AlertCircle, ArrowRight, Gift, LoaderCircle, Lock, Mail, User } from 'lucide-react';
 import { motion } from 'motion/react';
 import BrandLogo from '@/components/BrandLogo';
 import { createClient, isBrowserSupabaseConfigured } from '@/lib/supabase/browser';
 
-export default function SignUpPage() {
+function SignUpPageFallback() {
+  return (
+    <main className="min-h-screen bg-purple-50 p-4 sm:flex sm:items-center sm:justify-center sm:p-6">
+      <div className="relative w-full max-w-md overflow-hidden rounded-[2rem] bg-white p-5 shadow-2xl sm:rounded-[2.5rem] sm:p-8 lg:p-10">
+        <div className="mb-8 text-center sm:mb-10">
+          <BrandLogo size="md" className="mb-6 justify-center" />
+          <h2 className="text-2xl font-bold text-gray-900">অ্যাকাউন্ট তৈরি করুন</h2>
+          <p className="text-gray-500">সাইন আপ ফর্ম লোড হচ্ছে...</p>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function SignUpPageContent() {
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const isSupabaseConfigured = isBrowserSupabaseConfigured();
-  const [redirectTarget, setRedirectTarget] = useState('/dashboard');
+  const redirectTarget = useMemo(() => {
+    const redirect = searchParams.get('redirect');
+    return redirect && redirect.startsWith('/') && !redirect.startsWith('//')
+      ? redirect
+      : '/dashboard';
+  }, [searchParams]);
+  const initialReferralCode = useMemo(() => {
+    return (searchParams.get('ref') ?? '').toUpperCase();
+  }, [searchParams]);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [referralCode, setReferralCode] = useState('');
+  const [referralCode, setReferralCode] = useState(initialReferralCode);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const redirect = params.get('redirect');
-    const ref = params.get('ref');
-
-    if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
-      setRedirectTarget(redirect);
-    }
-
-    if (ref) {
-      setReferralCode(ref.toUpperCase());
-    }
-  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,35 +55,34 @@ export default function SignUpPage() {
       return;
     }
 
-    const callbackSearch = new URLSearchParams({
-      next: redirectTarget,
-    });
-
-    if (referralCode.trim()) {
-      callbackSearch.set('ref', referralCode.trim().toUpperCase());
-    }
-
-    const emailRedirectTo = `${window.location.origin}/auth/callback?${callbackSearch.toString()}`;
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo,
-        data: {
-          full_name: fullName,
-          pending_referral_code: referralCode.trim().toUpperCase() || undefined,
-        },
+    const response = await fetch('/api/auth/sign-up', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        fullName,
+        email,
+        password,
+        referralCode,
+        redirectTo: redirectTarget,
+      }),
     });
+    const data = (await response.json()) as {
+      error?: string;
+      message?: string;
+    };
 
-    if (error) {
-      setErrorMessage(error.message);
+    if (!response.ok) {
+      setErrorMessage(data.error || 'Account create করা যায়নি।');
       setIsSubmitting(false);
       return;
     }
 
-    setMessage('অ্যাকাউন্ট তৈরি হয়েছে। ইমেইল confirmation লিংক দেখে অ্যাকাউন্ট verify করুন।');
+    setMessage(
+      data.message ||
+        'অ্যাকাউন্ট তৈরি হয়েছে। ইমেইল confirmation লিংক দেখে অ্যাকাউন্ট verify করুন।',
+    );
     setIsSubmitting(false);
   }
 
@@ -265,5 +274,13 @@ export default function SignUpPage() {
         <div className="absolute -bottom-20 -left-20 h-40 w-40 rounded-full bg-brand/5" />
       </motion.div>
     </main>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={<SignUpPageFallback />}>
+      <SignUpPageContent />
+    </Suspense>
   );
 }

@@ -4,11 +4,16 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import PageHeader from '@/components/PageHeader';
 import FaqAccordion from '@/components/FaqAccordion';
-import { FAQ_ITEMS } from '@/lib/faq-data';
+import { listPublishedFaqEntries } from '@/lib/content-store';
 
 export const revalidate = 86400;
 
-export default function FaqPage() {
+export default async function FaqPage() {
+  const faqItems = (await listPublishedFaqEntries('site')).map((entry) => ({
+    question: entry.question,
+    answer: entry.answer,
+  }));
+
   return (
     <main>
       <Navbar />
@@ -41,7 +46,7 @@ export default function FaqPage() {
             </Link>
           </div>
 
-          <FaqAccordion items={FAQ_ITEMS} icon="arrow" numbered />
+          <FaqAccordion items={faqItems} icon="arrow" numbered />
         </div>
       </section>
 

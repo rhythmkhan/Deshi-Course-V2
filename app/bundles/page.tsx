@@ -9,7 +9,7 @@ import {
   buildCollectionPageSchema,
   buildMetadata,
 } from '@/lib/seo';
-import { BUNDLE_CATALOG } from '@/lib/bundle-catalog';
+import { listPublishedBundles } from '@/lib/content-store';
 
 export const metadata: Metadata = buildMetadata({
   title: 'Course Bundles | n8n Bundle, Vibe Coding Bundle | দেশি কোর্স',
@@ -26,12 +26,13 @@ export const metadata: Metadata = buildMetadata({
 
 export const revalidate = 86400;
 
-export default function BundlesPage() {
+export default async function BundlesPage() {
+  const bundles = await listPublishedBundles();
   const schema = buildCollectionPageSchema(
     'বান্ডেলসমূহ',
     'বাংলা course bundle collection',
     '/bundles',
-    BUNDLE_CATALOG.map((bundle) => ({
+    bundles.map((bundle) => ({
       name: bundle.title,
       path: `/bundles/${bundle.slug}`,
     })),
@@ -51,7 +52,7 @@ export default function BundlesPage() {
         title="বান্ডেলসমূহ"
         subtitle="কোর্সের সাথে extra library, template বা bonus add-on একসাথে নিতে চাইলে bundle গুলো দেখুন।"
       />
-      <Infographic />
+      <Infographic bundles={bundles} />
       <Footer />
     </main>
   );

@@ -10,8 +10,11 @@ import MetaViewContentTracker from '@/components/MetaViewContentTracker';
 import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
 import PublicItemCheckoutPanel from '@/components/PublicItemCheckoutPanel';
+import {
+  getPublishedBundleDetailBySlug,
+  listPublishedBundles,
+} from '@/lib/content-store';
 import { buildMetaContentType } from '@/lib/meta';
-import { getAllBundleDetailSlugs, getBundleDetailBySlug } from '@/lib/bundle-details';
 import {
   buildBreadcrumbSchema,
   buildCommercialItemSchema,
@@ -24,17 +27,18 @@ interface BundleDetailPageProps {
 }
 
 export const revalidate = 86400;
-export const dynamicParams = false;
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
-  return getAllBundleDetailSlugs().map((slug) => ({ slug }));
+  const bundles = await listPublishedBundles();
+  return bundles.map((bundle) => ({ slug: bundle.slug }));
 }
 
 export async function generateMetadata({
   params,
 }: BundleDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const bundle = getBundleDetailBySlug(slug);
+  const bundle = await getPublishedBundleDetailBySlug(slug);
 
   if (!bundle) {
     return buildMetadata({
@@ -61,7 +65,7 @@ export async function generateMetadata({
 
 export default async function BundleDetailPage({ params }: BundleDetailPageProps) {
   const { slug } = await params;
-  const bundle = getBundleDetailBySlug(slug);
+  const bundle = await getPublishedBundleDetailBySlug(slug);
 
   if (!bundle) {
     notFound();

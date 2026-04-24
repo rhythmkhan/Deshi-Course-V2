@@ -17,7 +17,9 @@ export default function FeaturedCourses({
   desktopLimit,
 }: FeaturedCoursesProps) {
   const formatBanglaPrice = (value: number) =>
-    `৳ ${value.toFixed(2).replace(/\d/g, (digit) => '০১২৩৪৫৬৭৮৯'[Number(digit)])}`;
+    value === 0
+      ? 'FREE'
+      : `৳ ${value.toFixed(2).replace(/\d/g, (digit) => '০১২৩৪৫৬৭৮৯'[Number(digit)])}`;
 
   const maxLimit = Math.max(limit ?? 0, mobileLimit ?? 0, desktopLimit ?? 0);
   const visibleCourses = maxLimit > 0 ? courses.slice(0, maxLimit) : courses;
@@ -67,13 +69,21 @@ export default function FeaturedCourses({
                       {course.tag}
                     </span>
                 )}
+                {course.promoTag && (
+                  <span
+                    className="absolute right-2 top-2 inline-flex h-[58px] w-[58px] -rotate-12 items-center justify-center border-2 border-white bg-[#ef4444] px-2 text-center text-[8px] font-black uppercase leading-tight tracking-[0.08em] text-white shadow-[0_10px_24px_rgba(15,23,42,0.28)] sm:right-4 sm:top-4 sm:h-[72px] sm:w-[72px] sm:text-[9px]"
+                    style={{ clipPath: 'polygon(50% 0%, 60% 18%, 78% 6%, 74% 26%, 94% 22%, 82% 40%, 100% 50%, 82% 60%, 94% 78%, 74% 74%, 78% 94%, 60% 82%, 50% 100%, 40% 82%, 22% 94%, 26% 74%, 6% 78%, 18% 60%, 0% 50%, 18% 40%, 6% 22%, 26% 26%, 22% 6%, 40% 18%)' }}
+                  >
+                    {course.promoTag}
+                  </span>
+                )}
               </div>
               <div className="flex grow flex-col p-3 sm:p-6">
                 <h3 className="mb-2 line-clamp-2 text-sm font-bold leading-snug text-gray-900 sm:mb-3 sm:text-xl">{course.title}</h3>
                 <div className="mb-3 text-[11px] text-gray-600 sm:mb-4 sm:text-sm">
                   <span className="line-clamp-1">{course.instructor}</span>
                 </div>
-                <ul className="mb-4 space-y-1.5 text-[11px] leading-4 text-gray-700 sm:mb-6 sm:space-y-2 sm:text-sm sm:leading-5">
+                <ul className="mb-4 flex-1 space-y-1.5 text-[11px] leading-4 text-gray-700 sm:mb-6 sm:space-y-2 sm:text-sm sm:leading-5">
                   {course.featureMetrics.map((feature, fIndex) => (
                     <li key={fIndex} className="flex items-start">
                       <Check className="mr-2 mt-0.5 h-4 w-4 shrink-0 text-brand" />

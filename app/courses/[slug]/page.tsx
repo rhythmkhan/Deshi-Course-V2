@@ -4,13 +4,16 @@ import { Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, BadgeCheck, GraduationCap, Users, Wrench } from 'lucide-react';
+import { ArrowLeft, BadgeCheck, Users, Wrench } from 'lucide-react';
 import StructuredData from '@/components/StructuredData';
 import MetaViewContentTracker from '@/components/MetaViewContentTracker';
 import Navbar from '@/components/Navbar';
 import CoursePurchasePanel from '@/components/CoursePurchasePanel';
 import Footer from '@/components/Footer';
-import { COURSE_DETAILS, getCourseBySlug } from '@/lib/course-details';
+import {
+  getPublishedCourseDetailBySlug,
+  listPublishedCourses,
+} from '@/lib/content-store';
 import { buildMetaContentType } from '@/lib/meta';
 import {
   buildBreadcrumbSchema,
@@ -24,7 +27,7 @@ interface CourseDetailPageProps {
 }
 
 export const revalidate = 86400;
-export const dynamicParams = false;
+export const dynamicParams = true;
 
 const levelLabel = {
   beginner: 'বিগিনার',
@@ -33,14 +36,15 @@ const levelLabel = {
 } as const;
 
 export async function generateStaticParams() {
-  return COURSE_DETAILS.map((course) => ({ slug: course.slug }));
+  const courses = await listPublishedCourses();
+  return courses.map((course) => ({ slug: course.slug }));
 }
 
 export async function generateMetadata({
   params,
 }: CourseDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const course = getCourseBySlug(slug);
+  const course = await getPublishedCourseDetailBySlug(slug);
 
   if (!course) {
     return buildMetadata({
@@ -68,7 +72,7 @@ export async function generateMetadata({
 
 export default async function CourseDetailPage({ params }: CourseDetailPageProps) {
   const { slug } = await params;
-  const course = getCourseBySlug(slug);
+  const course = await getPublishedCourseDetailBySlug(slug);
 
   if (!course) {
     notFound();
@@ -196,8 +200,8 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
               <StepSection title="শেখার workflow" items={course.workflow} />
             </div>
 
-            <SectionBlock title="টুলস, সাপোর্ট ও সার্টিফিকেট">
-              <div className="grid gap-6 lg:grid-cols-3">
+            <SectionBlock title="টুলস ও সাপোর্ট">
+              <div className="grid gap-6 lg:grid-cols-2">
                 <InfoCard
                   icon={<Wrench className="mb-4 h-5 w-5 text-brand" />}
                   title="ব্যবহৃত টুলস"
@@ -207,11 +211,6 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
                   icon={<Users className="mb-4 h-5 w-5 text-brand" />}
                   title="সাপোর্ট সিস্টেম"
                   content={<p className="text-sm leading-relaxed text-gray-600">{course.support}</p>}
-                />
-                <InfoCard
-                  icon={<GraduationCap className="mb-4 h-5 w-5 text-brand" />}
-                  title="সার্টিফিকেট"
-                  content={<p className="text-sm leading-relaxed text-gray-600">{course.certificate}</p>}
                 />
               </div>
             </SectionBlock>
