@@ -10,8 +10,11 @@ import MetaViewContentTracker from '@/components/MetaViewContentTracker';
 import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
 import PublicItemCheckoutPanel from '@/components/PublicItemCheckoutPanel';
+import AnswerBlock from '@/components/AnswerBlock';
 import {
   getPublishedBundleDetailBySlug,
+  isBundleSeoIndexable,
+  listSeoBundles,
   listPublishedBundles,
 } from '@/lib/content-store';
 import { buildMetaContentType } from '@/lib/meta';
@@ -49,11 +52,16 @@ export async function generateMetadata({
     });
   }
 
+  const seoIndexable = isBundleSeoIndexable(bundle);
+
   return buildMetadata({
-    title: `${bundle.title} | ৳${bundle.bundlePrice} | Bundle Offer | দেশি কোর্স`,
-    description: bundle.overview,
+    title:
+      bundle.seoTitle ||
+      `${bundle.title} | ৳${bundle.bundlePrice} | Bundle Offer | দেশি কোর্স`,
+    description: bundle.seoDescription || bundle.overview,
     path: `/bundles/${bundle.slug}`,
     image: bundle.image,
+    noIndex: !seoIndexable,
     keywords: [
       bundle.title,
       'bundle offer',
@@ -71,6 +79,27 @@ export default async function BundleDetailPage({ params }: BundleDetailPageProps
     notFound();
   }
 
+  const relatedBundles = (await listSeoBundles())
+    .filter((item) => item.slug !== bundle.slug)
+    .slice(0, 3);
+  const schema = [
+    buildBreadcrumbSchema([
+      { name: 'হোম', path: '/' },
+      { name: 'বান্ডেলসমূহ', path: '/bundles' },
+      { name: bundle.title, path: `/bundles/${bundle.slug}` },
+    ]),
+    buildCommercialItemSchema({
+      name: bundle.title,
+      description: bundle.overview,
+      path: `/bundles/${bundle.slug}`,
+      image: bundle.image,
+      price: bundle.bundlePrice,
+      category: 'Course Bundle',
+      keywords: [bundle.title, bundle.highlight, 'bundle'],
+    }),
+    ...(bundle.faq.length > 0 ? [buildFaqSchema(bundle.faq)] : []),
+  ];
+
   return (
     <main className="min-h-screen bg-white">
       <MetaViewContentTracker
@@ -86,26 +115,19 @@ export default async function BundleDetailPage({ params }: BundleDetailPageProps
           num_items: 1,
         }}
       />
-      <StructuredData
-        data={[
-          buildBreadcrumbSchema([
-            { name: 'হোম', path: '/' },
-            { name: 'বান্ডেলসমূহ', path: '/bundles' },
-            { name: bundle.title, path: `/bundles/${bundle.slug}` },
-          ]),
-          buildCommercialItemSchema({
-            name: bundle.title,
-            description: bundle.overview,
-            path: `/bundles/${bundle.slug}`,
-            image: bundle.image,
-            price: bundle.bundlePrice,
-            category: 'Course Bundle',
-            keywords: [bundle.title, bundle.highlight, 'bundle'],
-          }),
-          buildFaqSchema(bundle.faq),
+      <StructuredData data={schema} />
+      <Navbar />
+      <AnswerBlock
+        eyebrow="Bundle answer"
+        title={`${bundle.title} কী নিয়ে তৈরি?`}
+        answer={`${bundle.title} হলো ${bundle.highlight} bundle offer। Current listed price ৳${bundle.bundlePrice}, access label ${bundle.accessLabel}, এবং included itemগুলো detail page-এ visible আছে।`}
+        points={[
+          `Bundle type: ${bundle.highlight}`,
+          `Included courses: ${bundle.includedCourseSlugs.length}`,
+          `Access: ${bundle.accessLabel}`,
+          `Price: ৳${bundle.bundlePrice}`,
         ]}
       />
-      <Navbar />
 
       <section className="border-b border-gray-100 bg-[linear-gradient(180deg,#faf5ff_0%,#ffffff_100%)]">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-20 lg:py-14">
@@ -196,6 +218,24 @@ export default async function BundleDetailPage({ params }: BundleDetailPageProps
             </div>
 
             <FaqSection items={bundle.faq} />
+
+            {relatedBundles.length > 0 && (
+              <SectionBlock title="আরও bundle offer">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {relatedBundles.map((item) => (
+                    <Link
+                      key={item.slug}
+                      href={`/bundles/${item.slug}`}
+                      className="rounded-2xl border border-gray-100 bg-gray-50 p-5 transition hover:border-brand/20 hover:bg-white"
+                    >
+                      <p className="text-sm font-medium text-brand">{item.highlight}</p>
+                      <h3 className="mt-2 text-lg font-bold text-gray-900">{item.title}</h3>
+                      <p className="mt-3 text-sm text-gray-500">৳{item.bundlePrice}</p>
+                    </Link>
+                  ))}
+                </div>
+              </SectionBlock>
+            )}
           </div>
 
           <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">

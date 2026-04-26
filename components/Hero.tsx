@@ -1,5 +1,5 @@
-import Image from 'next/image';
 import Link from 'next/link';
+import { preload } from 'react-dom';
 import { ArrowRight } from 'lucide-react';
 
 interface HeroSectionData {
@@ -53,6 +53,7 @@ export default function Hero({ sectionData }: { sectionData?: HeroSectionData | 
   const secondaryHref =
     typeof body.secondaryCtaHref === 'string' ? body.secondaryCtaHref : '/courses';
   const imageSrc = typeof body.image === 'string' ? body.image : '/hero.webp';
+  preload(imageSrc, { as: 'image', fetchPriority: 'high' });
 
   return (
     <section className="relative overflow-hidden pb-8 pt-2 sm:pb-12 sm:pt-4 lg:pb-16 lg:pt-8">
@@ -84,15 +85,16 @@ export default function Hero({ sectionData }: { sectionData?: HeroSectionData | 
 
         <div className="relative mt-2 flex justify-center sm:-mt-8 lg:mt-0 lg:justify-end">
           <div className="relative z-10 aspect-square w-full max-w-[34rem] sm:max-w-[42rem] lg:max-w-[48rem]">
-            <Image 
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={imageSrc}
               alt="Students Learning"
-              fill
-              className="object-contain"
-              priority
+              width="960"
+              height="768"
+              className="absolute inset-0 h-full w-full object-contain"
+              loading="eager"
               fetchPriority="high"
-              quality={60}
-              sizes="(max-width: 640px) 92vw, (max-width: 1024px) 78vw, 42vw"
+              decoding="async"
             />
           </div>
         </div>

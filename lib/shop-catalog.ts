@@ -10,6 +10,8 @@ export interface ShopItem {
   description: string;
   format: string;
   accessLabel: string;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
   featureMetrics: string[];
   tag?: string;
 }

@@ -283,7 +283,7 @@ export default function CartPageContent() {
             কোর্স দেখুন
           </Link>
           <Link
-            href="/templates"
+            href="/products"
             className="rounded-2xl border border-brand/20 bg-white px-6 py-3 font-bold text-brand transition hover:bg-brand/5"
           >
             প্রোডাক্ট দেখুন
@@ -370,7 +370,7 @@ export default function CartPageContent() {
                   </Link>
                 ) : (
                   <Link
-                    href={item.type === 'bundle' ? `/bundles/${item.slug}` : `/templates/${item.slug}`}
+                    href={item.type === 'bundle' ? `/bundles/${item.slug}` : `/products/${item.slug}`}
                     className="inline-flex items-center gap-2 rounded-2xl border border-brand/20 bg-white px-4 py-2.5 text-sm font-bold text-brand transition hover:bg-brand/5"
                   >
                     বিস্তারিত
@@ -505,3 +505,4 @@ export default function CartPageContent() {
     </div>
   );
 }
+

@@ -83,6 +83,13 @@ export async function POST(request: Request) {
       : await createPendingOrder(body.courseSlug as string, body.couponCode);
     const orderFinishedAt = performance.now();
     const baseUrl = getRequestSiteUrl({ request, headers: request.headers });
+    const webhookSecret = process.env.ZINIPAY_WEBHOOK_SECRET?.trim() || '';
+    const webhookUrl = new URL('/api/payments/zinipay/webhook', baseUrl);
+
+    if (webhookSecret) {
+      webhookUrl.searchParams.set('token', webhookSecret);
+    }
+
     const metadata: Record<string, string | number> = isCartCheckout
       ? {
           orderId: pending.orderId,
@@ -105,7 +112,7 @@ export async function POST(request: Request) {
       amount: pending.pricing.finalPrice.toFixed(2),
       redirect_url: `${baseUrl}/payments/success?orderId=${pending.orderId}${fromCartParam}`,
       cancel_url: `${baseUrl}/payments/cancel?orderId=${pending.orderId}`,
-      webhook_url: `${baseUrl}/api/payments/zinipay/webhook`,
+      webhook_url: webhookUrl.toString(),
       cus_name: pending.customerName,
       cus_email: pending.customerEmail,
       return_type: 'GET',

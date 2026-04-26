@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import type { EmailOtpType } from '@supabase/supabase-js';
-import { isAdminEmail } from '@/lib/admin-access';
 import {
   finalizeSuccessfulAuth,
   recordAuthFailure,
@@ -102,10 +101,7 @@ export async function GET(request: Request) {
         }
       }
 
-      const resolvedNext = isAdminEmail(user?.email, process.env.ADMIN_EMAIL_ALLOWLIST)
-        ? '/admin'
-        : safeNext;
-      const redirectUrl = new URL(resolvedNext, baseUrl);
+      const redirectUrl = new URL(safeNext, baseUrl);
 
       if (ref) {
         redirectUrl.searchParams.set('ref', ref);

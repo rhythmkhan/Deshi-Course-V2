@@ -1,17 +1,19 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
 import Stats from '@/components/Stats';
 import Features from '@/components/Features';
 import FeaturedCourses from '@/components/FeaturedCourses';
-import Infographic from '@/components/Infographic';
-import ProductShowcase from '@/components/ProductShowcase';
+import BundleShowcaseStatic from '@/components/BundleShowcaseStatic';
+import ProductShowcaseStatic from '@/components/ProductShowcaseStatic';
 import Testimonials from '@/components/Testimonials';
 import Support from '@/components/Support';
 import LatestBlog from '@/components/LatestBlog';
 import CTA from '@/components/CTA';
 import Footer from '@/components/Footer';
 import StructuredData from '@/components/StructuredData';
+import AnswerBlock from '@/components/AnswerBlock';
 import {
   getHomepageSection,
   listActiveAnnouncementBanners,
@@ -21,10 +23,14 @@ import {
   listPublishedBundles,
   listPublishedProducts,
   listPublishedTestimonials,
+  listSeoBundles,
+  listSeoCourses,
+  listSeoProducts,
 } from '@/lib/content-store';
 import {
   buildBreadcrumbSchema,
   buildCollectionPageSchema,
+  buildFaqSchema,
   buildMetadata,
 } from '@/lib/seo';
 
@@ -43,31 +49,57 @@ export const metadata: Metadata = buildMetadata({
   ],
 });
 
+export const dynamic = 'force-static';
 export const revalidate = 86400;
 
 export default async function Home() {
+  const [heroSection, banners] = await Promise.all([
+    getHomepageSection('hero'),
+    listActiveAnnouncementBanners(),
+  ]);
+
+  return (
+    <main className="min-h-screen">
+      <Navbar />
+      {banners.length > 0 ? (
+        <section className="border-b border-brand/10 bg-brand/5 px-4 py-3 text-center text-sm text-brand">
+          <span className="font-semibold">{banners[0].title}</span>
+          {banners[0].body ? <span className="ml-2 text-gray-600">{banners[0].body}</span> : null}
+        </section>
+      ) : null}
+      <Hero sectionData={heroSection} />
+      <Suspense fallback={null}>
+        <HomeDeferredSections />
+      </Suspense>
+    </main>
+  );
+}
+
+async function HomeDeferredSections() {
   const [
     featuredCourses,
     bundles,
     products,
     posts,
-    heroSection,
     featureSection,
     supportSection,
     testimonials,
     siteFaq,
-    banners,
+    seoCourses,
+    seoBundles,
+    seoProducts,
   ] = await Promise.all([
     listFeaturedCourses(),
     listPublishedBundles(),
     listPublishedProducts(),
     listPublishedBlogPosts(),
-    getHomepageSection('hero'),
     getHomepageSection('features'),
     getHomepageSection('support'),
     listPublishedTestimonials(),
     listPublishedFaqEntries('site'),
-    listActiveAnnouncementBanners(),
+    listSeoCourses(),
+    listSeoBundles(),
+    listSeoProducts(),
   ]);
 
   const homepageSchema = buildCollectionPageSchema(
@@ -75,17 +107,17 @@ export default async function Home() {
     'বাংলা online course, bundle, template এবং skill learning collection',
     '/',
     [
-      ...featuredCourses.slice(0, 6).map((course) => ({
+      ...seoCourses.slice(0, 6).map((course) => ({
         name: course.title,
         path: `/courses/${course.slug}`,
       })),
-      ...bundles.slice(0, 2).map((bundle) => ({
+      ...seoBundles.slice(0, 2).map((bundle) => ({
         name: bundle.title,
         path: `/bundles/${bundle.slug}`,
       })),
-      ...products.slice(0, 2).map((product) => ({
+      ...seoProducts.slice(0, 2).map((product) => ({
         name: product.title,
-        path: `/templates/${product.slug}`,
+        path: `/products/${product.slug}`,
       })),
       ...posts.slice(0, 3).map((post) => ({
         name: post.title,
@@ -95,24 +127,38 @@ export default async function Home() {
   );
 
   return (
-    <main className="min-h-screen">
+    <>
       <StructuredData
         data={buildBreadcrumbSchema([{ name: 'হোম', path: '/' }])}
       />
       <StructuredData data={homepageSchema} />
-      <Navbar />
-      {banners.length > 0 ? (
-        <section className="border-b border-brand/10 bg-brand/5 px-4 py-3 text-center text-sm text-brand">
-          <span className="font-semibold">{banners[0].title}</span>
-          {banners[0].body ? <span className="ml-2 text-gray-600">{banners[0].body}</span> : null}
-        </section>
+      {siteFaq.length > 0 ? (
+        <StructuredData
+          data={buildFaqSchema(
+            siteFaq.map((entry) => ({
+              question: entry.question,
+              answer: entry.answer,
+            })),
+          )}
+        />
       ) : null}
-      <Hero sectionData={heroSection} />
+      <AnswerBlock
+        eyebrow="Platform answer"
+        title="দেশি কোর্স কী?"
+        answer="দেশি কোর্স একটি বাংলা online learning ও digital resource platform, যেখানে course, bundle, template এবং support channel এক জায়গায় পাওয়া যায়। প্রতিটি offer page থেকে real catalog data, price, access এবং FAQ দেখে সিদ্ধান্ত নেওয়া যায়।"
+        points={[
+          `${featuredCourses.length} featured course loaded from catalog`,
+          `${bundles.length} bundle offer available`,
+          'Support: WhatsApp, Messenger, email ও contact form',
+        ]}
+        ctaHref="/courses"
+        ctaLabel="Course catalog দেখুন"
+      />
       <Stats />
       <Features sectionData={featureSection} />
       <FeaturedCourses courses={featuredCourses} mobileLimit={4} desktopLimit={3} />
-      <Infographic bundles={bundles} mobileLimit={4} desktopLimit={3} />
-      <ProductShowcase items={products} mobileLimit={4} desktopLimit={3} />
+      <BundleShowcaseStatic bundles={bundles} mobileLimit={4} desktopLimit={3} />
+      <ProductShowcaseStatic items={products} mobileLimit={4} desktopLimit={3} />
       <Testimonials testimonials={testimonials} />
       <Support
         sectionData={supportSection}
@@ -124,6 +170,7 @@ export default async function Home() {
       <LatestBlog posts={posts} mobileLimit={2} desktopLimit={3} />
       <CTA />
       <Footer />
-    </main>
+    </>
   );
 }
+

@@ -1,10 +1,27 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight, HelpCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import PageHeader from '@/components/PageHeader';
 import FaqAccordion from '@/components/FaqAccordion';
+import StructuredData from '@/components/StructuredData';
+import AnswerBlock from '@/components/AnswerBlock';
 import { listPublishedFaqEntries } from '@/lib/content-store';
+import {
+  buildBreadcrumbSchema,
+  buildFaqSchema,
+  buildMetadata,
+  buildWebPageSchema,
+} from '@/lib/seo';
+
+export const metadata: Metadata = buildMetadata({
+  title: 'FAQ | Course Access, Payment ও Support | দেশি কোর্স',
+  description:
+    'দেশি কোর্সের course access, payment, certificate, refund এবং support সংক্রান্ত common question-এর উত্তর।',
+  path: '/faq',
+  keywords: ['deshi course faq', 'course access help', 'payment support bangla'],
+});
 
 export const revalidate = 86400;
 
@@ -16,7 +33,36 @@ export default async function FaqPage() {
 
   return (
     <main>
+      <StructuredData
+        data={[
+          buildBreadcrumbSchema([
+            { name: 'হোম', path: '/' },
+            { name: 'FAQ', path: '/faq' },
+          ]),
+          buildWebPageSchema({
+            name: 'দেশি কোর্স FAQ',
+            description:
+              'Course access, payment, certificate এবং support FAQ collection।',
+            path: '/faq',
+            type: 'FAQPage',
+          }),
+          ...(faqItems.length > 0 ? [buildFaqSchema(faqItems)] : []),
+        ]}
+      />
       <Navbar />
+      <AnswerBlock
+        eyebrow="FAQ answer"
+        title="কোর্স access বা payment issue হলে কী করবেন?"
+        answer="প্রথমে এই FAQ থেকে common answer দেখুন। তারপরও issue থাকলে contact page দিয়ে account email, order reference এবং কোন item নিয়ে সমস্যা হচ্ছে তা পাঠান।"
+        points={[
+          'Course access ও payment status',
+          'Certificate এবং support policy',
+          'Refund policy link',
+          'Direct contact next step',
+        ]}
+        ctaHref="/contact"
+        ctaLabel="Support-এ যোগাযোগ করুন"
+      />
       <PageHeader
         title="সচরাচর জিজ্ঞাসিত প্রশ্নাবলী"
         subtitle="কোর্স কেনা, payment, access, certificate এবং support সংক্রান্ত সাধারণ প্রশ্নের বিস্তারিত উত্তর এখানে পাবেন।"

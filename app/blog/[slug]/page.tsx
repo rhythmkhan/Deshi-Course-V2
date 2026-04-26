@@ -6,6 +6,7 @@ import { notFound } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import StructuredData from '@/components/StructuredData';
+import AnswerBlock from '@/components/AnswerBlock';
 import { getPublishedBlogPostBySlug, listPublishedBlogPosts } from '@/lib/content-store';
 import { Calendar, User, ArrowLeft, Tag } from 'lucide-react';
 import {
@@ -36,8 +37,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   return buildMetadata({
-    title: `${post.title} | দেশি কোর্স ব্লগ`,
-    description: post.excerpt,
+    title: post.seoTitle || `${post.title} | দেশি কোর্স ব্লগ`,
+    description: post.seoDescription || post.excerpt,
     path: `/blog/${post.slug}`,
     image: post.image,
     type: 'article',
@@ -52,6 +53,15 @@ export default async function BlogPostPage({ params }: PageProps) {
   if (!post) {
     notFound();
   }
+
+  const relatedPosts = (await listPublishedBlogPosts())
+    .filter(
+      (item) =>
+        item.slug !== post.slug &&
+        (item.category === post.category ||
+          item.tags.some((tag) => post.tags.includes(tag))),
+    )
+    .slice(0, 3);
 
   return (
     <div className="min-h-screen bg-white">
@@ -74,6 +84,16 @@ export default async function BlogPostPage({ params }: PageProps) {
         ]}
       />
       <Navbar />
+      <AnswerBlock
+        eyebrow="Article answer"
+        title={post.title}
+        answer={post.excerpt}
+        points={[
+          `Category: ${post.category}`,
+          `Author/publisher: ${post.author}`,
+          `Published: ${post.date}`,
+        ]}
+      />
       
       <main className="pb-16 pt-6 sm:pb-20 sm:pt-12">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-10">
@@ -146,6 +166,28 @@ export default async function BlogPostPage({ params }: PageProps) {
               ))}
             </div>
           </div>
+
+          {relatedPosts.length > 0 && (
+            <section className="mt-14 border-t border-gray-100 pt-8">
+              <h2 className="mb-5 text-2xl font-bold text-gray-900">সম্পর্কিত guide</h2>
+              <div className="grid gap-4 sm:grid-cols-3">
+                {relatedPosts.map((item) => (
+                  <Link
+                    key={item.slug}
+                    href={`/blog/${item.slug}`}
+                    className="rounded-2xl border border-gray-100 bg-gray-50 p-5 transition hover:border-brand/20 hover:bg-white"
+                  >
+                    <p className="text-xs font-bold uppercase tracking-wide text-brand">
+                      {item.category}
+                    </p>
+                    <h3 className="mt-2 line-clamp-3 text-base font-bold text-gray-900">
+                      {item.title}
+                    </h3>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Newsletter / CTA */}
           <div className="relative mt-16 overflow-hidden rounded-[2rem] bg-brand p-6 text-center text-white sm:mt-20 sm:rounded-[3rem] sm:p-10 md:p-16">

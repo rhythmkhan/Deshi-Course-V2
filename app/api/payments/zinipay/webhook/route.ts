@@ -31,6 +31,16 @@ function extractValue(payload: Record<string, unknown>, keys: string[]) {
 
 export async function POST(request: Request) {
   try {
+    const expectedSecret = process.env.ZINIPAY_WEBHOOK_SECRET?.trim() || '';
+    const receivedSecret = new URL(request.url).searchParams.get('token')?.trim() || '';
+
+    if (!expectedSecret || receivedSecret !== expectedSecret) {
+      return NextResponse.json(
+        { ok: false, message: 'Unauthorized request' },
+        { status: 401, headers: noStoreHeaders },
+      );
+    }
+
     const payload = (await request.json()) as Record<string, unknown>;
     const invoiceId = extractValue(payload, ['invoiceId', 'invoice_id', 'val_id', 'valId']);
     const metadata =
@@ -46,6 +56,17 @@ export async function POST(request: Request) {
     if (!invoiceId || !orderId) {
       return NextResponse.json(
         { ok: false, message: 'Missing invoiceId/orderId' },
+        { status: 400, headers: noStoreHeaders },
+      );
+    }
+
+    if (
+      typeof metadata.orderId === 'string' &&
+      metadata.orderId &&
+      metadata.orderId !== orderId
+    ) {
+      return NextResponse.json(
+        { ok: false, message: 'Order metadata mismatch' },
         { status: 400, headers: noStoreHeaders },
       );
     }

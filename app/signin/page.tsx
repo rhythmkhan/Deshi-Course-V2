@@ -3,7 +3,6 @@
 import React, { Suspense, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { isAdminEmail } from '@/lib/admin-access';
 import { AlertCircle, ArrowRight, LoaderCircle, Lock, Mail } from 'lucide-react';
 import { motion } from 'motion/react';
 import BrandLogo from '@/components/BrandLogo';
@@ -107,7 +106,7 @@ function SignInPageContent() {
       return;
     }
 
-    router.push(data.redirectTo || (isAdminEmail(email) ? '/admin' : redirectTarget));
+    router.push(data.redirectTo || redirectTarget);
     router.refresh();
   }
 

@@ -1,6 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { isAdminEmail } from '@/lib/admin-access';
 import { hasSupabaseAuthCookie } from '@/lib/supabase/auth-cookies';
 import {
   isMissingColumnError,
@@ -9,8 +8,8 @@ import {
 import { getClientIpFromHeaders } from '@/lib/rate-limit';
 
 const AUTH_PAGES = ['/signin', '/signup', '/forgot-password'];
-const PROTECTED_PAGES = ['/admin', '/cart', '/dashboard'];
-const IP_GUARDED_PAGES = ['/admin', '/signin', '/signup', '/forgot-password'];
+const PROTECTED_PAGES = ['/cart', '/dashboard'];
+const IP_GUARDED_PAGES = ['/signin', '/signup', '/forgot-password'];
 
 function matchesPath(pathname: string, routes: string[]) {
   return routes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
@@ -133,16 +132,9 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  if (user && pathname.startsWith('/admin') && !isAdminEmail(user.email)) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = '/dashboard';
-    redirectUrl.search = '';
-    return NextResponse.redirect(redirectUrl);
-  }
-
   if (user && matchesPath(pathname, AUTH_PAGES)) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = isAdminEmail(user.email) ? '/admin' : '/dashboard';
+    redirectUrl.pathname = '/dashboard';
     redirectUrl.search = '';
     return NextResponse.redirect(redirectUrl);
   }

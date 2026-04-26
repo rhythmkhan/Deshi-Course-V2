@@ -7,6 +7,7 @@ import Footer from '@/components/Footer';
 import { listPublishedBlogPosts } from '@/lib/content-store';
 import { Calendar, User, ArrowRight } from 'lucide-react';
 import StructuredData from '@/components/StructuredData';
+import AnswerBlock from '@/components/AnswerBlock';
 import {
   buildBreadcrumbSchema,
   buildCollectionPageSchema,
@@ -51,6 +52,17 @@ export default async function BlogPage() {
       />
       <StructuredData data={schema} />
       <Navbar />
+      <AnswerBlock
+        eyebrow="Blog answer"
+        title="দেশি কোর্স ব্লগে কী পাবেন?"
+        answer="এখানে course, bundle, template, category এবং support topic নিয়ে guide পাওয়া যায়। CMS post থাকলে সেটিই দেখানো হয়; না থাকলে real catalog data থেকে generated guide তৈরি হয়।"
+        points={[
+          `${posts.length} published guide/post`,
+          'Course ও product detail page-এ internal links',
+          'FAQ-style answer sections',
+          'Bangla/English practical tone',
+        ]}
+      />
       
       <main className="pt-10 pb-20 sm:pt-12">
         <div className="max-w-7xl mx-auto px-6 lg:px-10">

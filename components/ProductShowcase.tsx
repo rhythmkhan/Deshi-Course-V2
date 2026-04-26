@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Check, Filter, Search, X } from 'lucide-react';
@@ -11,6 +11,7 @@ interface ProductShowcaseProps {
   limit?: number;
   mobileLimit?: number;
   desktopLimit?: number;
+  showFilters?: boolean;
 }
 
 export default function ProductShowcase({
@@ -18,13 +19,15 @@ export default function ProductShowcase({
   limit,
   mobileLimit,
   desktopLimit,
+  showFilters = true,
 }: ProductShowcaseProps) {
   const [query, setQuery] = useState('');
   const [formatFilter, setFormatFilter] = useState<'all' | 'digital' | 'whatsapp'>('all');
   const maxLimit = Math.max(limit ?? 0, mobileLimit ?? 0, desktopLimit ?? 0);
+  const deferredQuery = useDeferredValue(query);
   const visibleItems = useMemo(() => {
     const initial = maxLimit > 0 ? items.slice(0, maxLimit) : items;
-    const normalizedQuery = query.trim().toLowerCase();
+    const normalizedQuery = deferredQuery.trim().toLowerCase();
 
     return initial.filter((item) => {
       const matchesQuery =
@@ -41,7 +44,7 @@ export default function ProductShowcase({
 
       return matchesQuery && matchesFormat;
     });
-  }, [items, maxLimit, formatFilter, query]);
+  }, [deferredQuery, formatFilter, items, maxLimit]);
 
   return (
     <section className="deferred-section py-16 sm:py-20 lg:py-24">
@@ -63,52 +66,54 @@ export default function ProductShowcase({
           </Link>
         </div>
 
-        <div className="mb-6 grid gap-3 rounded-3xl border border-gray-100 bg-white p-4 shadow-sm sm:grid-cols-[1.2fr_0.8fr_auto] sm:items-center">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Product search করুন"
-              className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-10 text-sm outline-none transition focus:border-brand focus:bg-white focus:ring-1 focus:ring-brand"
-            />
-            {query ? (
-              <button
-                type="button"
-                onClick={() => setQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
-                aria-label="Clear product search"
+        {showFilters ? (
+          <div className="mb-6 grid gap-3 rounded-3xl border border-gray-100 bg-white p-4 shadow-sm sm:grid-cols-[1.2fr_0.8fr_auto] sm:items-center">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Product search করুন"
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-10 text-sm outline-none transition focus:border-brand focus:bg-white focus:ring-1 focus:ring-brand"
+              />
+              {query ? (
+                <button
+                  type="button"
+                  onClick={() => setQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+                  aria-label="Clear product search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+            </div>
+
+            <div className="relative">
+              <Filter className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <select
+                value={formatFilter}
+                onChange={(e) => setFormatFilter(e.target.value as typeof formatFilter)}
+                className="w-full appearance-none rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-sm outline-none transition focus:border-brand focus:bg-white focus:ring-1 focus:ring-brand"
               >
-                <X className="h-4 w-4" />
-              </button>
-            ) : null}
-          </div>
+                <option value="all">সব format</option>
+                <option value="digital">Digital</option>
+                <option value="whatsapp">WhatsApp</option>
+              </select>
+            </div>
 
-          <div className="relative">
-            <Filter className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <select
-              value={formatFilter}
-              onChange={(e) => setFormatFilter(e.target.value as typeof formatFilter)}
-              className="w-full appearance-none rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-sm outline-none transition focus:border-brand focus:bg-white focus:ring-1 focus:ring-brand"
+            <button
+              type="button"
+              onClick={() => {
+                setQuery('');
+                setFormatFilter('all');
+              }}
+              className="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 transition hover:border-brand hover:text-brand"
             >
-              <option value="all">সব format</option>
-              <option value="digital">Digital</option>
-              <option value="whatsapp">WhatsApp</option>
-            </select>
+              Reset
+            </button>
           </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              setQuery('');
-              setFormatFilter('all');
-            }}
-            className="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 transition hover:border-brand hover:text-brand"
-          >
-            Reset
-          </button>
-        </div>
+        ) : null}
 
         <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3 lg:gap-8">
           {visibleItems.map((item, index) => {
@@ -179,3 +184,4 @@ export default function ProductShowcase({
     </section>
   );
 }
+

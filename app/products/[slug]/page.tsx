@@ -10,8 +10,11 @@ import MetaViewContentTracker from '@/components/MetaViewContentTracker';
 import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
 import PublicItemCheckoutPanel from '@/components/PublicItemCheckoutPanel';
+import AnswerBlock from '@/components/AnswerBlock';
 import {
   getPublishedProductDetailBySlug,
+  isProductSeoIndexable,
+  listSeoProducts,
   listPublishedProducts,
 } from '@/lib/content-store';
 import { buildMetaContentType } from '@/lib/meta';
@@ -49,11 +52,16 @@ export async function generateMetadata({
     });
   }
 
+  const seoIndexable = isProductSeoIndexable(product);
+
   return buildMetadata({
-    title: `${product.title} | ৳${product.price} | Digital Product | দেশি কোর্স`,
-    description: product.overview,
+    title:
+      product.seoTitle ||
+      `${product.title} | ৳${product.price} | Digital Product | দেশি কোর্স`,
+    description: product.seoDescription || product.overview,
     path: `/products/${product.slug}`,
     image: product.image,
+    noIndex: !seoIndexable,
     keywords: [
       product.title,
       product.type,
@@ -72,6 +80,27 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     notFound();
   }
 
+  const relatedProducts = (await listSeoProducts())
+    .filter((item) => item.slug !== product.slug && item.type === product.type)
+    .slice(0, 4);
+  const schema = [
+    buildBreadcrumbSchema([
+      { name: 'হোম', path: '/' },
+      { name: 'প্রোডাক্টসমূহ', path: '/products' },
+      { name: product.title, path: `/products/${product.slug}` },
+    ]),
+    buildCommercialItemSchema({
+      name: product.title,
+      description: product.overview,
+      path: `/products/${product.slug}`,
+      image: product.image,
+      price: product.price,
+      category: product.type,
+      keywords: [product.title, product.type, product.format],
+    }),
+    ...(product.faq.length > 0 ? [buildFaqSchema(product.faq)] : []),
+  ];
+
   return (
     <main className="min-h-screen bg-white">
       <MetaViewContentTracker
@@ -87,26 +116,19 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           num_items: 1,
         }}
       />
-      <StructuredData
-        data={[
-          buildBreadcrumbSchema([
-            { name: 'হোম', path: '/' },
-            { name: 'প্রোডাক্টসমূহ', path: '/products' },
-            { name: product.title, path: `/products/${product.slug}` },
-          ]),
-          buildCommercialItemSchema({
-            name: product.title,
-            description: product.overview,
-            path: `/products/${product.slug}`,
-            image: product.image,
-            price: product.price,
-            category: product.type,
-            keywords: [product.title, product.type, product.format],
-          }),
-          buildFaqSchema(product.faq),
+      <StructuredData data={schema} />
+      <Navbar />
+      <AnswerBlock
+        eyebrow="Resource answer"
+        title={`${product.title} কী?`}
+        answer={`${product.title} হলো ${product.type} type-এর digital product/resource। Current format ${product.format}, access label ${product.accessLabel}, এবং listed price ৳${product.price}।`}
+        points={[
+          `Type: ${product.type}`,
+          `Format: ${product.format}`,
+          `Access: ${product.accessLabel}`,
+          `Price: ৳${product.price}`,
         ]}
       />
-      <Navbar />
 
       <section className="border-b border-gray-100 bg-[linear-gradient(180deg,#faf5ff_0%,#ffffff_100%)]">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-20 lg:py-14">
@@ -195,6 +217,10 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
             <SectionGrid title="Use case" items={product.useCases} />
             <FaqSection items={product.faq} />
+
+            {relatedProducts.length > 0 && (
+              <RelatedProductSection items={relatedProducts} />
+            )}
           </div>
 
           <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
@@ -327,6 +353,29 @@ function FaqSection({
             <h3 className="mb-2 text-base font-bold text-gray-900 sm:text-lg">{item.question}</h3>
             <p className="text-sm leading-relaxed text-gray-600 sm:text-base">{item.answer}</p>
           </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RelatedProductSection({ items }: { items: Array<{ slug: string; title: string; type: string; format: string; price: number }> }) {
+  return (
+    <div className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
+      <h2 className="mb-5 text-2xl font-bold text-gray-900">সম্পর্কিত resource</h2>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {items.map((item) => (
+          <Link
+            key={item.slug}
+            href={`/products/${item.slug}`}
+            className="rounded-2xl border border-gray-100 bg-gray-50 p-5 transition hover:border-brand/20 hover:bg-white"
+          >
+            <p className="text-sm font-medium text-brand">{item.type}</p>
+            <h3 className="mt-2 text-lg font-bold text-gray-900">{item.title}</h3>
+            <p className="mt-3 text-sm text-gray-500">
+              {item.format} • ৳{item.price}
+            </p>
+          </Link>
         ))}
       </div>
     </div>

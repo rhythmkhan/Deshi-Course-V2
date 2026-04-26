@@ -2,11 +2,11 @@ import AnimatedCounter from './AnimatedCounter';
 
 export default function Stats() {
   const stats = [
-    { value: 15000, suffix: '+', label: 'শিক্ষার্থী' },
-    { value: 75, suffix: '%', label: 'সাফল্যের হার' },
-    { value: 35, suffix: '', label: 'প্রধান প্রশ্নসমূহ' },
-    { value: 26, suffix: '', label: 'বিশেষজ্ঞ শিক্ষক' },
-    { value: 16, suffix: '', label: 'অভিজ্ঞতার বছর' },
+    { value: 25000, suffix: '+', label: 'সন্তুষ্ট শিক্ষার্থী' },
+    { value: 75, suffix: '%+', label: 'কোর্স কমপ্লিশন রেট' },
+    { value: 350, suffix: '+', label: 'কোর্স' },
+    { value: 4.5, suffix: '/5', decimals: 1, label: 'শিক্ষার্থীদের রেটিং' },
+    { value: 24, suffix: '/7', label: 'সাপোর্ট' },
   ];
 
   return (
@@ -21,7 +21,11 @@ export default function Stats() {
               }`}
             >
               <p className="text-3xl font-bold text-brand sm:text-4xl">
-                <AnimatedCounter value={stat.value} suffix={stat.suffix} />
+                <AnimatedCounter
+                  value={stat.value}
+                  suffix={stat.suffix}
+                  decimals={stat.decimals}
+                />
               </p>
               <p className="mt-2 text-sm font-medium text-gray-600 sm:text-base">{stat.label}</p>
             </div>

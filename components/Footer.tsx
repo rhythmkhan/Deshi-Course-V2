@@ -19,7 +19,7 @@ export default function Footer() {
         { href: '/about', label: 'সম্পর্কে' },
         { href: '/courses', label: 'কোর্সসমূহ' },
         { href: '/bundles', label: 'বান্ডেল' },
-        { href: '/templates', label: 'প্রোডাক্ট' },
+        { href: '/products', label: 'প্রোডাক্ট' },
         { href: '/blog', label: 'ব্লগ' },
         { href: '/faq', label: 'FAQ' },
         { href: '/contact', label: 'যোগাযোগ' },
@@ -40,6 +40,7 @@ export default function Footer() {
       links: [
         { href: '/privacy', label: 'গোপনীয়তা নীতি' },
         { href: '/terms', label: 'শর্তাবলী' },
+        { href: '/refund-policy', label: 'রিফান্ড নীতি' },
         { href: '/legal', label: 'আইনি পদক্ষেপ' },
       ],
     },
@@ -164,3 +165,4 @@ export default function Footer() {
     </footer>
   );
 }
+

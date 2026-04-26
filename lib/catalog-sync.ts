@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { JWT } from 'google-auth-library';
+import { cache } from 'react';
 import { buildCatalogArt, type CatalogArtTheme } from './catalog-art';
 
 export type ItemType = 'course' | 'bundle' | 'product';
@@ -458,20 +459,20 @@ async function loadLocalCourseAssetManifest() {
   }
 }
 
-export async function fetchSheetCatalogItems() {
+export const fetchSheetCatalogItems = cache(async function fetchSheetCatalogItems() {
   const rows = await readSheetValues('A:Z');
   if (rows.length <= 1) return [];
   return dedupeLatestBySlug(
     rows.slice(1).map(mapRow).filter((item): item is SheetCatalogItem => Boolean(item)),
   );
-}
+});
 
-export async function fetchSheetCourseContent() {
+export const fetchSheetCourseContent = cache(async function fetchSheetCourseContent() {
   const allItems = await fetchSheetMixedContent();
   return allItems.filter((item) => item.type === 'course');
-}
+});
 
-export async function fetchSheetMixedContent() {
+export const fetchSheetMixedContent = cache(async function fetchSheetMixedContent() {
   const rows = await readCourseSheetValues('A:Z');
   if (rows.length <= 1) return [];
   const items = dedupeLatestBySlug(
@@ -514,30 +515,35 @@ export async function fetchSheetMixedContent() {
         item.type === 'course'
           ? inferImportedCoursePrice(mergedTitle, mergedRawText)
           : manifestEntry.price ?? item.price,
-    } satisfies SheetCourseContent;
+      } satisfies SheetCourseContent;
   });
-}
+});
 
 export async function getCoursePrimaryLinkBySlug(slug: string) {
   const items = await fetchSheetCourseContent();
   return items.find((item) => item.slug === slug)?.primaryLink || '';
 }
 
-export async function getCoursePrimaryLinkMap() {
+export const getCoursePrimaryLinkMap = cache(async function getCoursePrimaryLinkMap() {
   const items = await fetchSheetCourseContent();
   return Object.fromEntries(
     items
       .filter((item) => item.primaryLink)
       .map((item) => [item.slug, item.primaryLink]),
   ) as Record<string, string>;
-}
+});
 
-export async function getTelegramCatalogImage(query: string, type: ItemType) {
+export const getTelegramCatalogImage = cache(async function getTelegramCatalogImage(
+  query: string,
+  type: ItemType,
+) {
   const telegramImage = await fetchTelegramImageQuery(query);
   return telegramImage || pickImageFromText(query, type);
-}
+});
 
-export async function getTelegramCoursePreviewImage(fileIdOrQuery: string) {
+export const getTelegramCoursePreviewImage = cache(async function getTelegramCoursePreviewImage(
+  fileIdOrQuery: string,
+) {
   const normalized = fileIdOrQuery.trim();
   if (!normalized) return '';
   if (normalized.startsWith('Ag') || normalized.startsWith('AA')) {
@@ -549,7 +555,7 @@ export async function getTelegramCoursePreviewImage(fileIdOrQuery: string) {
     return buildTelegramPreviewPath(fileId);
   }
   return telegramMatch;
-}
+});
 
 export function normalizeCatalogPrice(price: number) {
   if (price <= 99) return 99;

@@ -17,6 +17,7 @@ const nextConfig: NextConfig = {
   },
   // Allow access to remote image placeholder.
   images: {
+    unoptimized: process.env.NODE_ENV !== 'production',
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 60 * 60 * 24 * 30,
     remotePatterns: [
@@ -55,8 +56,53 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react'],
   },
+  async redirects() {
+    return [
+      {
+        source: '/categories',
+        destination: '/products',
+        permanent: true,
+      },
+      {
+        source: '/categories/:path*',
+        destination: '/products',
+        permanent: true,
+      },
+      {
+        source: '/templates',
+        destination: '/products',
+        permanent: true,
+      },
+      {
+        source: '/templates/:path*',
+        destination: '/products/:path*',
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()',
+          },
+        ],
+      },
       {
         source: '/hero.webp',
         headers: [

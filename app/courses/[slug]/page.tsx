@@ -10,14 +10,18 @@ import MetaViewContentTracker from '@/components/MetaViewContentTracker';
 import Navbar from '@/components/Navbar';
 import CoursePurchasePanel from '@/components/CoursePurchasePanel';
 import Footer from '@/components/Footer';
+import AnswerBlock from '@/components/AnswerBlock';
 import {
   getPublishedCourseDetailBySlug,
+  isCourseSeoIndexable,
+  listSeoBundles,
+  listSeoCourses,
   listPublishedCourses,
 } from '@/lib/content-store';
 import { buildMetaContentType } from '@/lib/meta';
 import {
   buildBreadcrumbSchema,
-  buildCommercialItemSchema,
+  buildCourseSchema,
   buildFaqSchema,
   buildMetadata,
 } from '@/lib/seo';
@@ -55,11 +59,16 @@ export async function generateMetadata({
     });
   }
 
+  const seoIndexable = isCourseSeoIndexable(course);
+
   return buildMetadata({
-    title: `${course.title} কোর্স | ৳${course.price} | Lifetime Access | দেশি কোর্স`,
-    description: course.heroSummary,
+    title:
+      course.seoTitle ||
+      `${course.title} কোর্স | ৳${course.price} | ${course.accessLabel} | দেশি কোর্স`,
+    description: course.seoDescription || course.heroSummary,
     path: `/courses/${course.slug}`,
     image: course.image,
+    noIndex: !seoIndexable,
     keywords: [
       course.title,
       course.category,
@@ -78,6 +87,35 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
     notFound();
   }
 
+  const [relatedCourses, relatedBundles] = await Promise.all([
+    listSeoCourses(),
+    listSeoBundles(),
+  ]);
+  const sameCategoryCourses = relatedCourses
+    .filter((item) => item.slug !== course.slug && item.category === course.category)
+    .slice(0, 4);
+  const containingBundles = relatedBundles
+    .filter((bundle) => bundle.includedCourseSlugs.includes(course.slug))
+    .slice(0, 3);
+  const schema = [
+    buildBreadcrumbSchema([
+      { name: 'হোম', path: '/' },
+      { name: 'কোর্সসমূহ', path: '/courses' },
+      { name: course.title, path: `/courses/${course.slug}` },
+    ]),
+    buildCourseSchema({
+      name: course.title,
+      description: course.description,
+      path: `/courses/${course.slug}`,
+      image: course.image,
+      price: course.price,
+      category: course.category,
+      provider: course.instructor,
+      keywords: [course.title, course.category, course.instructor],
+    }),
+    ...(course.faq.length > 0 ? [buildFaqSchema(course.faq)] : []),
+  ];
+
   return (
     <main className="min-h-screen bg-white">
       <MetaViewContentTracker
@@ -93,26 +131,19 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
           num_items: 1,
         }}
       />
-      <StructuredData
-        data={[
-          buildBreadcrumbSchema([
-            { name: 'হোম', path: '/' },
-            { name: 'কোর্সসমূহ', path: '/courses' },
-            { name: course.title, path: `/courses/${course.slug}` },
-          ]),
-          buildCommercialItemSchema({
-            name: course.title,
-            description: course.description,
-            path: `/courses/${course.slug}`,
-            image: course.image,
-            price: course.price,
-            category: course.category,
-            keywords: [course.title, course.category, course.instructor],
-          }),
-          buildFaqSchema(course.faq),
+      <StructuredData data={schema} />
+      <Navbar />
+      <AnswerBlock
+        eyebrow="Course answer"
+        title={`${course.title} কার জন্য?`}
+        answer={`${course.title} হলো ${course.category} category-এর বাংলা online course। ${course.accessLabel} access model, visible course details এবং support information দেখে learner নিজের goal-এর সাথে fit যাচাই করতে পারে।`}
+        points={[
+          `Listed price: ${course.price === 0 ? 'FREE' : `৳${course.price}`}`,
+          `Level: ${levelLabel[course.level]}`,
+          `Instructor/provider: ${course.instructor}`,
+          `Access: ${course.accessLabel}`,
         ]}
       />
-      <Navbar />
 
       <section className="border-b border-gray-100 bg-[linear-gradient(180deg,#faf5ff_0%,#ffffff_100%)]">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-20 lg:py-14">
@@ -216,6 +247,35 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
             </SectionBlock>
 
             <FaqSection items={course.faq} />
+
+            {(sameCategoryCourses.length > 0 || containingBundles.length > 0) && (
+              <SectionBlock title="সম্পর্কিত শেখার পথ">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {sameCategoryCourses.map((item) => (
+                    <Link
+                      key={item.slug}
+                      href={`/courses/${item.slug}`}
+                      className="rounded-2xl border border-gray-100 bg-gray-50 p-5 transition hover:border-brand/20 hover:bg-white"
+                    >
+                      <p className="text-sm font-medium text-brand">{item.category}</p>
+                      <h3 className="mt-2 text-lg font-bold text-gray-900">{item.title}</h3>
+                      <p className="mt-3 text-sm text-gray-500">{item.accessLabel}</p>
+                    </Link>
+                  ))}
+                  {containingBundles.map((bundle) => (
+                    <Link
+                      key={bundle.slug}
+                      href={`/bundles/${bundle.slug}`}
+                      className="rounded-2xl border border-gray-100 bg-gray-50 p-5 transition hover:border-brand/20 hover:bg-white"
+                    >
+                      <p className="text-sm font-medium text-brand">বান্ডেল</p>
+                      <h3 className="mt-2 text-lg font-bold text-gray-900">{bundle.title}</h3>
+                      <p className="mt-3 text-sm text-gray-500">{bundle.highlight}</p>
+                    </Link>
+                  ))}
+                </div>
+              </SectionBlock>
+            )}
           </div>
 
           <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">

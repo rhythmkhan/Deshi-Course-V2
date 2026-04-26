@@ -1,7 +1,6 @@
 import 'server-only';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { logAdminAction } from '@/lib/admin-audit';
 import { getClientIpFromHeaders, rateLimitByKey } from '@/lib/rate-limit';
 import {
   isMissingColumnError,
@@ -26,6 +25,10 @@ export interface LoginRiskAssessment {
   reasons: string[];
   ipBlocked: boolean;
   userBlocked: boolean;
+}
+
+async function logAdminAction(_input: unknown) {
+  return;
 }
 
 function safeHeader(headers: HeaderSource, name: string) {

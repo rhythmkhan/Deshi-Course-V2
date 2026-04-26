@@ -11,7 +11,6 @@ export const config = {
     '/forgot-password/:path*',
     '/signin',
     '/signup',
-    '/admin/:path*',
     '/cart/:path*',
     '/dashboard/:path*',
     '/update-password/:path*',

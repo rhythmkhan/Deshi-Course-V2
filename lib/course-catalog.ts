@@ -13,6 +13,8 @@ export interface CourseSummary {
   accessLabel: string;
   tag: string;
   promoTag?: string;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
   featureMetrics: string[];
   isOwned: boolean;
   progress: number;
@@ -104,7 +106,6 @@ export const COURSE_CATALOG: CourseSummary[] = [
     instructor: 'দেশি কোর্স',
     accessLabel: 'Lifetime access',
     tag: 'নতুন',
-    promoTag: 'Access first!',
     featureMetrics: [
       'Lifetime access, কোনো monthly fee নাই',
       'All future updates free',

@@ -185,6 +185,86 @@ export function buildCommercialItemSchema({
   };
 }
 
+type CourseSchemaInput = {
+  name: string;
+  description: string;
+  path: string;
+  image?: string;
+  price: number;
+  category: string;
+  provider?: string;
+  language?: string;
+  keywords?: string[];
+};
+
+export function buildCourseSchema({
+  name,
+  description,
+  path,
+  image,
+  price,
+  category,
+  provider = SITE_NAME,
+  language = 'bn-BD',
+  keywords = [],
+}: CourseSchemaInput) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Course',
+    name,
+    description,
+    image: normalizeImageUrl(image),
+    url: absoluteUrl(path),
+    inLanguage: language,
+    courseMode: 'online',
+    about: category,
+    keywords: keywords.join(', '),
+    provider: {
+      '@type': 'Organization',
+      name: provider,
+      sameAs: SITE_URL,
+    },
+    offers: {
+      '@type': 'Offer',
+      url: absoluteUrl(path),
+      priceCurrency: 'BDT',
+      price,
+      availability: 'https://schema.org/InStock',
+      category: 'OnlineCourse',
+    },
+  };
+}
+
+export function buildWebPageSchema({
+  name,
+  description,
+  path,
+  type = 'WebPage',
+}: {
+  name: string;
+  description: string;
+  path: string;
+  type?: 'WebPage' | 'AboutPage' | 'ContactPage' | 'FAQPage' | 'CollectionPage';
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': type,
+    name,
+    description,
+    url: absoluteUrl(path),
+    isPartOf: {
+      '@type': 'WebSite',
+      name: SITE_NAME,
+      url: SITE_URL,
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: SITE_NAME,
+    },
+    inLanguage: 'bn-BD',
+  };
+}
+
 export function buildFaqSchema(
   items: Array<{ question: string; answer: string }>,
 ) {

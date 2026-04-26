@@ -1,45 +1,100 @@
-import React from 'react';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { MessagesSquare, SearchCheck, Users } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import PageHeader from '@/components/PageHeader';
+import StructuredData from '@/components/StructuredData';
+import AnswerBlock from '@/components/AnswerBlock';
+import {
+  buildBreadcrumbSchema,
+  buildMetadata,
+  buildWebPageSchema,
+} from '@/lib/seo';
+
+export const metadata: Metadata = buildMetadata({
+  title: 'Learning Guidance ও Support | দেশি কোর্স',
+  description:
+    'দেশি কোর্সে mentor-style guidance, support group বা build review থাকলে কীভাবে offer detail থেকে verify করবেন।',
+  path: '/services/mentors',
+  keywords: ['learning guidance bangla', 'course support group', 'deshi course mentor'],
+});
 
 export const revalidate = 86400;
-import Image from 'next/image';
 
 export default function MentorsPage() {
-  const mentors = [
-    { name: 'আরিফ আহমেদ', role: 'সিনিয়র সফটওয়্যার ইঞ্জিনিয়ার', company: 'গুগল', img: 'https://picsum.photos/seed/m1/200/200' },
-    { name: 'তানজিলা হক', role: 'ইউএক্স ডিজাইনার', company: 'মেটা', img: 'https://picsum.photos/seed/m2/200/200' },
-    { name: 'রাকিব হাসান', role: 'ডেটা সায়েন্টিস্ট', company: 'অ্যামাজন', img: 'https://picsum.photos/seed/m3/200/200' },
+  const guidanceItems = [
+    {
+      title: 'Offer-specific guidance',
+      desc: 'প্রতিটি course বা bundle-এর support/guidance availability আলাদা হতে পারে।',
+      icon: <SearchCheck className="h-8 w-8" />,
+    },
+    {
+      title: 'Support channels',
+      desc: 'WhatsApp, Messenger, email এবং contact form দিয়ে question পাঠানো যায়।',
+      icon: <MessagesSquare className="h-8 w-8" />,
+    },
+    {
+      title: 'Community or review',
+      desc: 'Private group, Q&A বা build review থাকলে সেটি নির্দিষ্ট offer detail-এ উল্লেখ থাকবে।',
+      icon: <Users className="h-8 w-8" />,
+    },
   ];
 
   return (
     <main>
-      <Navbar />
-      <PageHeader 
-        title="ইন্ডাস্ট্রি মেন্টরস" 
-        subtitle="বিশ্বের সেরা কোম্পানিগুলোতে কর্মরত মেন্টরদের কাছ থেকে সরাসরি শিখুন।" 
+      <StructuredData
+        data={[
+          buildBreadcrumbSchema([
+            { name: 'হোম', path: '/' },
+            { name: 'Learning Guidance', path: '/services/mentors' },
+          ]),
+          buildWebPageSchema({
+            name: 'দেশি কোর্স Learning Guidance',
+            description: 'Offer-specific support, Q&A বা guidance availability guide।',
+            path: '/services/mentors',
+          }),
+        ]}
       />
-      
+      <Navbar />
+      <AnswerBlock
+        eyebrow="Guidance answer"
+        title="Mentor বা support group আছে কি?"
+        answer="Support group, live Q&A, build review বা mentor-style guidance courseভেদে আলাদা হতে পারে। কোনো offer-এ থাকলে detail page-এ visible থাকবে অথবা support team থেকে confirm করতে হবে।"
+        points={[
+          'Fake mentor claims রাখা হয়নি',
+          'Offer-specific support verify করুন',
+          'Course detail page আগে পড়ুন',
+          'প্রশ্ন থাকলে contact করুন',
+        ]}
+        ctaHref="/contact"
+        ctaLabel="Guidance বিষয়ে জিজ্ঞেস করুন"
+      />
+      <PageHeader
+        title="Learning Guidance"
+        subtitle="Guidance, support group বা review সুবিধা থাকলে সেটি নির্দিষ্ট offer অনুযায়ী যাচাই করুন।"
+      />
+
       <section className="py-24">
-        <div className="max-w-7xl mx-auto px-6 lg:px-20">
-          <div className="grid md:grid-cols-3 gap-10">
-            {mentors.map((mentor, index) => (
-              <div key={index} className="bg-white p-8 rounded-3xl border border-gray-100 text-center hover:shadow-2xl transition group">
-                <div className="w-32 h-32 mx-auto rounded-full overflow-hidden mb-6 border-4 border-purple-100 group-hover:border-brand transition relative">
-                  <Image 
-                    src={mentor.img}
-                    alt={mentor.name}
-                    fill
-                    className="object-cover"
-                    referrerPolicy="no-referrer"
-                  />
+        <div className="mx-auto max-w-7xl px-6 lg:px-20">
+          <div className="grid gap-10 md:grid-cols-3">
+            {guidanceItems.map((item) => (
+              <div
+                key={item.title}
+                className="rounded-3xl border border-gray-100 bg-white p-8 text-center transition hover:shadow-2xl"
+              >
+                <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-purple-100 text-brand">
+                  {item.icon}
                 </div>
-                <p className="mb-1 text-xl font-bold text-gray-900">{mentor.name}</p>
-                <p className="text-brand font-medium mb-2">{mentor.role}</p>
-                <p className="text-sm text-gray-700">{mentor.company}</p>
+                <h2 className="mb-3 text-xl font-bold text-gray-900">{item.title}</h2>
+                <p className="leading-relaxed text-gray-700">{item.desc}</p>
               </div>
             ))}
+          </div>
+          <div className="mt-10 text-center">
+            <Link href="/courses" className="font-bold text-brand hover:underline">
+              Course detail page দেখে guidance availability verify করুন
+            </Link>
           </div>
         </div>
       </section>

@@ -1537,7 +1537,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-end">
                         <Link
-                          href={`/templates/${item.slug}`}
+                          href={`/products/${item.slug}`}
                           className={`min-w-0 rounded-lg px-2 py-2 text-center text-[11px] font-bold transition sm:w-auto sm:rounded-xl sm:px-4 sm:py-2 sm:text-sm ${
                             item.isOwned
                               ? 'bg-green-50 text-green-700 hover:bg-green-100'
@@ -1790,3 +1790,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

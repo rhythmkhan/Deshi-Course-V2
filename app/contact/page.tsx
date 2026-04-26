@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Mail, Phone, Facebook, MessageCircle } from 'lucide-react';
 import ContactForm from '@/components/ContactForm';
 import StructuredData from '@/components/StructuredData';
+import AnswerBlock from '@/components/AnswerBlock';
 import { absoluteUrl, buildBreadcrumbSchema, buildMetadata } from '@/lib/seo';
 
 export const metadata: Metadata = buildMetadata({
@@ -39,6 +40,17 @@ export default function ContactPage() {
         ]}
       />
       <Navbar />
+      <AnswerBlock
+        eyebrow="Contact answer"
+        title="Support নিতে কী তথ্য পাঠাবেন?"
+        answer="Course access, payment বা delivery issue হলে account email, order/payment reference, item name এবং সমস্যার screenshot/details পাঠালে support team দ্রুত context বুঝতে পারে।"
+        points={[
+          'Email: info@deshicourse.xyz',
+          'WhatsApp: +880 1813-896400',
+          'Messenger ও Facebook available',
+          'Contact form দিয়ে detailed issue পাঠানো যায়',
+        ]}
+      />
       <PageHeader 
         title="যোগাযোগ" 
         subtitle="আপনার যেকোনো প্রশ্ন বা মতামতের জন্য আমাদের সাথে যোগাযোগ করুন।" 

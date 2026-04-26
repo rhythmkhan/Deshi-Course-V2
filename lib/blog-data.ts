@@ -1,4 +1,4 @@
-import { PROMOTIONAL_BLOG_POSTS } from './blog-promotions';
+import { COMMERCIAL_BLOG_POSTS } from '@/lib/commercial-blog-posts';
 
 export interface BlogPost {
   id: string;
@@ -11,6 +11,8 @@ export interface BlogPost {
   image: string;
   category: string;
   tags: string[];
+  seoTitle?: string | null;
+  seoDescription?: string | null;
 }
 
 interface TrendBlogSeed {
@@ -901,7 +903,6 @@ const LEGACY_POSTS: BlogPost[] = [
 ] as BlogPost[];
 
 const BASE_BLOG_POSTS: Omit<BlogPost, 'id'>[] = [
-  ...PROMOTIONAL_BLOG_POSTS,
   ...TRENDING_POSTS.map((post, index) => ({
     slug: post.slug,
     title: post.title,
@@ -917,6 +918,7 @@ const BASE_BLOG_POSTS: Omit<BlogPost, 'id'>[] = [
     ...post,
     image: LEGACY_EDITORIAL_IMAGES[index] ?? LEGACY_EDITORIAL_IMAGES[0],
   })),
+  ...COMMERCIAL_BLOG_POSTS.map(({ id: _id, ...post }) => post),
 ];
 
 export const BLOG_POSTS: BlogPost[] = BASE_BLOG_POSTS.map((post, index) => ({

@@ -77,12 +77,12 @@ test('bundle checkout redirects unauthenticated users to signin with redirect ta
   await expectRedirectToSignIn(page, '/bundles/ai-career-duo-bundle');
 });
 
-test('template checkout redirects unauthenticated users to signin with redirect target', async ({ page }) => {
-  await page.goto('/templates/lovable');
+test('product checkout redirects unauthenticated users to signin with redirect target', async ({ page }) => {
+  await page.goto('/products/lovable');
 
   await expect(page.getByRole('heading', { name: 'Lovable' })).toBeVisible();
   await page.getByRole('button', { name: 'Pay করার আগে sign in করুন' }).click();
-  await expectRedirectToSignIn(page, '/templates/lovable');
+  await expectRedirectToSignIn(page, '/products/lovable');
 });
 
 test('blog detail page keeps the subscription form mobile friendly', async ({ page }) => {

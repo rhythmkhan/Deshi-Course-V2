@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { isAdminEmail } from '@/lib/admin-access';
 import { createClient } from '@/lib/supabase/server';
 import {
   assertAuthAllowedByEmail,
@@ -92,7 +91,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: true,
-        redirectTo: isAdminEmail(user.email) ? '/admin' : body.redirectTo,
+        redirectTo: body.redirectTo,
       },
       { headers: noStoreHeaders },
     );

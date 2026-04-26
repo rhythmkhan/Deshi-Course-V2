@@ -12,6 +12,8 @@ export interface BundleItem {
   highlight: string;
   includedCourseSlugs: string[];
   includedShopSlugs?: string[];
+  seoTitle?: string | null;
+  seoDescription?: string | null;
   featureMetrics: string[];
   tag?: string;
 }

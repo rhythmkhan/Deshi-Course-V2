@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 
 type BrandLogoProps = {
@@ -36,7 +35,17 @@ export default function BrandLogo({
   return (
     <Link href={href} className={`inline-flex items-center gap-3 whitespace-nowrap ${className}`}>
       <div className={`relative shrink-0 ${sizing.wrapper}`}>
-        <Image src="/logo.webp" alt="" fill className="object-contain" priority={priority} sizes="48px" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/logo.webp"
+          alt=""
+          width="48"
+          height="48"
+          className="h-full w-full object-contain"
+          loading="eager"
+          decoding="async"
+          fetchPriority={priority ? 'high' : undefined}
+        />
       </div>
       <span className={`shrink-0 font-bold leading-none tracking-tight text-gray-900 ${sizing.text} ${textClassName}`}>
         দেশি <span className="text-brand">কোর্স</span>

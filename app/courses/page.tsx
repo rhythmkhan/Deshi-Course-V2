@@ -3,7 +3,11 @@ import React from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import CoursesCatalogBrowser from '@/components/CoursesCatalogBrowser';
-import { listPublishedCourses } from '@/lib/content-store';
+import AnswerBlock from '@/components/AnswerBlock';
+import {
+  listPublishedCourses,
+  listSeoCourses,
+} from '@/lib/content-store';
 import StructuredData from '@/components/StructuredData';
 import {
   buildBreadcrumbSchema,
@@ -28,13 +32,22 @@ export const metadata: Metadata = buildMetadata({
 
 export const revalidate = 86400;
 
-export default async function CoursesPage() {
-  const courses = await listPublishedCourses();
+interface CoursesPageProps {
+  searchParams?: Promise<{ search?: string }>;
+}
+
+export default async function CoursesPage({ searchParams }: CoursesPageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const initialQuery = resolvedSearchParams.search?.trim() || '';
+  const [courses, seoCourses] = await Promise.all([
+    listPublishedCourses(),
+    listSeoCourses(),
+  ]);
   const schema = buildCollectionPageSchema(
     'সব কোর্স',
     'বাংলা online course collection',
     '/courses',
-    courses.map((course) => ({
+    seoCourses.map((course) => ({
       name: course.title,
       path: `/courses/${course.slug}`,
     })),
@@ -50,10 +63,22 @@ export default async function CoursesPage() {
       />
       <StructuredData data={schema} />
       <Navbar />
+      <AnswerBlock
+        eyebrow="Course catalog answer"
+        title="কোন বাংলা online course দিয়ে শুরু করবেন?"
+        answer="প্রথমে নিজের goal, current skill level, budget এবং access preference মিলিয়ে course shortlist করুন। দেশি কোর্স catalog-এ visible course data, category, price এবং access label দেখে compare করা যায়।"
+        points={[
+          'Search দিয়ে course/category খুঁজুন',
+          'Beginner, intermediate বা free filter ব্যবহার করুন',
+          'Course detail page-এ FAQ ও access note পড়ুন',
+          'Support লাগলে contact page ব্যবহার করুন',
+        ]}
+      />
       <CoursesCatalogBrowser
         courses={courses}
         title="কোর্সসমূহ"
         subtitle="সাইটের সব live course collection থেকে আপনার প্রয়োজনের skill বেছে নিন।"
+        initialQuery={initialQuery}
       />
       <Footer />
     </main>

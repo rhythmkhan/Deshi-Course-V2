@@ -1,42 +1,22 @@
 import type { MetadataRoute } from 'next';
 import {
-  listManagedBlogPosts,
-  listManagedBundles,
-  listManagedCourses,
-  listManagedProducts,
+  listPublishedBlogPosts,
+  listSeoBundles,
+  listSeoCourses,
+  listSeoProducts,
 } from '@/lib/content-store';
 import { SITE_URL } from '@/lib/site-url';
 
 export const revalidate = 86400;
 
-function parseTimestamp(value?: string | null) {
-  if (!value) {
-    return null;
-  }
-
-  const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp) ? timestamp : null;
-}
-
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [allCourses, allBundles, allProducts, allPosts] = await Promise.all([
-    listManagedCourses(),
-    listManagedBundles(),
-    listManagedProducts(),
-    listManagedBlogPosts(),
+  const [courses, bundles, products, posts] = await Promise.all([
+    listSeoCourses(),
+    listSeoBundles(),
+    listSeoProducts(),
+    listPublishedBlogPosts(),
   ]);
-  const courses = allCourses.filter((course) => course.isPublished);
-  const bundles = allBundles.filter((bundle) => bundle.isPublished);
-  const products = allProducts.filter((product) => product.isPublished);
-  const posts = allPosts.filter((post) => post.isPublished);
-  const latestContentTimestamp = Math.max(
-    Date.now(),
-    ...courses.map((course) => parseTimestamp(course.updatedAt) ?? 0),
-    ...bundles.map((bundle) => parseTimestamp(bundle.updatedAt) ?? 0),
-    ...products.map((product) => parseTimestamp(product.updatedAt) ?? 0),
-    ...posts.map((post) => parseTimestamp(post.updatedAt || post.publishedAt) ?? 0),
-  );
-  const siteLastModified = new Date(latestContentTimestamp);
+  const siteLastModified = new Date();
 
   const staticRoutes = [
     { route: '', changeFrequency: 'daily' as const, priority: 1 },
@@ -47,7 +27,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { route: '/courses', changeFrequency: 'weekly' as const, priority: 0.8 },
     { route: '/faq', changeFrequency: 'weekly' as const, priority: 0.7 },
     { route: '/privacy', changeFrequency: 'monthly' as const, priority: 0.4 },
-    { route: '/templates', changeFrequency: 'weekly' as const, priority: 0.8 },
+    { route: '/refund-policy', changeFrequency: 'monthly' as const, priority: 0.4 },
+    { route: '/services/certification', changeFrequency: 'monthly' as const, priority: 0.5 },
+    { route: '/services/mentors', changeFrequency: 'monthly' as const, priority: 0.5 },
+    { route: '/services/support', changeFrequency: 'monthly' as const, priority: 0.5 },
+    { route: '/products', changeFrequency: 'weekly' as const, priority: 0.8 },
     { route: '/terms', changeFrequency: 'monthly' as const, priority: 0.4 },
   ];
 
@@ -60,27 +44,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
     ...courses.map((course) => ({
       url: `${SITE_URL}/courses/${course.slug}`,
-      lastModified: course.updatedAt || siteLastModified,
+      lastModified: siteLastModified,
       changeFrequency: 'weekly' as const,
       priority: 0.9,
     })),
     ...bundles.map((bundle) => ({
       url: `${SITE_URL}/bundles/${bundle.slug}`,
-      lastModified: bundle.updatedAt || siteLastModified,
+      lastModified: siteLastModified,
       changeFrequency: 'weekly' as const,
       priority: 0.85,
     })),
     ...products.map((product) => ({
-      url: `${SITE_URL}/templates/${product.slug}`,
-      lastModified: product.updatedAt || siteLastModified,
+      url: `${SITE_URL}/products/${product.slug}`,
+      lastModified: siteLastModified,
       changeFrequency: 'weekly' as const,
       priority: 0.85,
     })),
     ...posts.map((post) => ({
       url: `${SITE_URL}/blog/${post.slug}`,
-      lastModified: post.updatedAt || post.publishedAt || siteLastModified,
+      lastModified: siteLastModified,
       changeFrequency: 'monthly' as const,
       priority: 0.75,
     })),
   ];
 }
+

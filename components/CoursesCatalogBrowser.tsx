@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Check, ChevronDown, Filter, Search, X } from 'lucide-react';
@@ -10,6 +10,7 @@ interface CoursesCatalogBrowserProps {
   courses: CourseSummary[];
   title: string;
   subtitle: string;
+  initialQuery?: string;
 }
 
 function getCourseClass(course: CourseSummary) {
@@ -20,11 +21,17 @@ function getCourseClass(course: CourseSummary) {
   return course.level;
 }
 
-export default function CoursesCatalogBrowser({ courses, title, subtitle }: CoursesCatalogBrowserProps) {
-  const [query, setQuery] = useState('');
+export default function CoursesCatalogBrowser({
+  courses,
+  title,
+  subtitle,
+  initialQuery = '',
+}: CoursesCatalogBrowserProps) {
+  const [query, setQuery] = useState(initialQuery);
   const [level, setLevel] = useState<CourseSummary['level'] | 'free' | 'all'>('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement | null>(null);
+  const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
@@ -38,7 +45,7 @@ export default function CoursesCatalogBrowser({ courses, title, subtitle }: Cour
   }, []);
 
   const filteredCourses = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+    const normalizedQuery = deferredQuery.trim().toLowerCase();
 
     return courses.filter((course) => {
       const matchesQuery =
@@ -53,7 +60,7 @@ export default function CoursesCatalogBrowser({ courses, title, subtitle }: Cour
 
       return matchesQuery && matchesLevel;
     });
-  }, [courses, level, query]);
+  }, [courses, deferredQuery, level]);
 
   const formatBanglaPrice = (value: number) =>
     value === 0

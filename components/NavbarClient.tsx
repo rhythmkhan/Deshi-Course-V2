@@ -8,11 +8,10 @@ import { hasSupabaseAuthCookie } from '@/lib/supabase/auth-cookies';
 import BrandLogo from './BrandLogo';
 
 const navLinks = [
-  { name: 'হোম', href: '/' },
-  { name: 'আমাদের সম্পর্কে', href: '/about' },
   { name: 'কোর্সসমূহ', href: '/courses' },
+  { name: 'প্রোডাক্ট', href: '/products' },
   { name: 'ব্লগ', href: '/blog' },
-  { name: 'যোগাযোগ', href: '/contact' },
+  { name: 'সাপোর্ট', href: '/contact' },
 ];
 
 function getBrowserAuthState() {
@@ -54,10 +53,10 @@ export default function NavbarClient() {
 
   return (
     <nav className="sticky top-0 z-50 border-b border-gray-100 bg-white/90 backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 md:py-4 lg:px-20">
+      <div className="relative mx-auto grid max-w-7xl grid-cols-[auto_1fr] items-center gap-x-4 px-4 py-3 sm:px-6 md:py-4 lg:grid-cols-[auto_1fr_auto] lg:px-20">
         <BrandLogo priority />
 
-        <div className="flex items-center gap-2 md:hidden">
+        <div className="flex items-center justify-end gap-2 md:hidden">
           <button
             type="button"
             className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-gray-700"
@@ -69,7 +68,7 @@ export default function NavbarClient() {
           </button>
         </div>
 
-        <div className="hidden items-center space-x-8 font-medium md:flex">
+        <div className="hidden items-center justify-center space-x-8 font-medium lg:absolute lg:left-1/2 lg:flex lg:-translate-x-1/2">
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -87,6 +86,9 @@ export default function NavbarClient() {
               </span>
             </Link>
           ))}
+        </div>
+
+        <div className="hidden justify-end md:flex">
           <Link href={authHref} prefetch={false}>
             <span className="inline-flex rounded-lg bg-brand px-6 py-2 text-white shadow-md transition hover:bg-brand-dark">
               {authLabel}
@@ -129,3 +131,4 @@ export default function NavbarClient() {
     </nav>
   );
 }
+

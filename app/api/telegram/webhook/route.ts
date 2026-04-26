@@ -68,8 +68,8 @@ const CATALOG_CONFIG: Record<TelegramCouponCatalogType, CatalogConfig> = {
   },
   product: {
     label: 'product',
-    listPath: '/templates',
-    detailPrefix: '/templates/',
+    listPath: '/products',
+    detailPrefix: '/products/',
     itemType: 'shop',
   },
 };
@@ -576,3 +576,4 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true });
 }
+

@@ -122,9 +122,9 @@ export default function AnimatedCounter({
 
   return (
     <span ref={ref} className={className}>
-      {prefix}
+      {toBengaliNumber(prefix)}
       {toBengaliNumber(displayValue)}
-      {suffix}
+      {toBengaliNumber(suffix)}
     </span>
   );
 }

@@ -223,7 +223,7 @@ const productPostVariants = [
       ${renderList(product.useCases.slice(0, 4).map(escapeHtml))}
       <h2>কীভাবে দ্রুত start করবেন</h2>
       ${renderList(product.workflow.slice(0, 3).map(escapeHtml), true)}
-      ${renderCta(`/templates/${product.slug}`, product.title, `${product.title} প্রোডাক্টের বিস্তারিত দেখুন`)}
+      ${renderCta(`/products/${product.slug}`, product.title, `${product.title} প্রোডাক্টের বিস্তারিত দেখুন`)}
     `,
   },
   {
@@ -245,7 +245,7 @@ const productPostVariants = [
       ${renderList(product.useCases.slice(0, 4).map(escapeHtml))}
       <h2>Support angle</h2>
       <p>${escapeHtml(product.support)}</p>
-      ${renderCta(`/templates/${product.slug}`, product.title, `${product.title} resource access দেখুন`)}
+      ${renderCta(`/products/${product.slug}`, product.title, `${product.title} resource access দেখুন`)}
     `,
   },
   {
@@ -267,7 +267,7 @@ const productPostVariants = [
       ])}
       <h2>Frequently asked questions</h2>
       ${renderFaq(product.faq.slice(0, 3))}
-      ${renderCta(`/templates/${product.slug}`, product.title, `${product.title} এখনই দেখুন`)}
+      ${renderCta(`/products/${product.slug}`, product.title, `${product.title} এখনই দেখুন`)}
     `,
   },
 ];
@@ -333,3 +333,4 @@ export const PROMOTIONAL_BLOG_POSTS: GeneratedBlogPost[] = [
   ...generatedBundlePosts,
   ...generatedProductPosts,
 ];
+

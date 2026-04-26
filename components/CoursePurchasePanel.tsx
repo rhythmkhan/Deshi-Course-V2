@@ -475,7 +475,7 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
           <Link
             href={
               shouldShowToolsCta
-                ? '/templates'
+                ? '/products'
                 : purchaseDetails?.accessHref || courseAccessHref || `/courses/${course.slug}`
             }
             className="block w-full rounded-2xl bg-brand px-6 py-3.5 text-center font-bold text-white shadow-lg transition hover:bg-brand-dark"
@@ -541,3 +541,4 @@ export default function CoursePurchasePanel({ course }: CoursePurchasePanelProps
     </div>
   );
 }
+

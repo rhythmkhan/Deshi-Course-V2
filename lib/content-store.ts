@@ -15,12 +15,24 @@ import { sanitizeRichHtml } from '@/lib/html-sanitize';
 import { getProductDetailBySlug } from '@/lib/product-details';
 import { SHOP_CATALOG, type ShopItem } from '@/lib/shop-catalog';
 import {
+  bundleToSeoEntity,
+  clampSeoDescription,
+  courseToSeoEntity,
+  deriveSeoCategories,
+  getSeoRiskReason,
+  productToSeoEntity,
+  templatePath,
+  type SeoCategory,
+} from '@/lib/seo-catalog';
+import {
   fetchSheetCourseContent,
   fetchSheetMixedContent,
   getTelegramCoursePreviewImage,
   normalizeCatalogPrice,
   type SheetCourseContent,
 } from '@/lib/catalog-sync';
+import { unstable_cache } from 'next/cache';
+import { cache } from 'react';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type {
   ManagedAnnouncementBanner,
@@ -58,6 +70,17 @@ interface PublicProductDetail extends ShopItem {
   faq: Array<{ question: string; answer: string }>;
   support: string;
   facts: Array<{ label: string; value: string }>;
+}
+
+const PUBLIC_CONTENT_REVALIDATE = 60 * 60;
+const ACTIVE_BANNER_REVALIDATE = 60 * 5;
+
+function withPublicContentCache<T>(
+  key: string,
+  loader: () => Promise<T>,
+  revalidate = PUBLIC_CONTENT_REVALIDATE,
+) {
+  return unstable_cache(loader, [`content-store:${key}`], { revalidate });
 }
 
 const FALLBACK_HOMEPAGE_SECTIONS: ManagedHomepageSection[] = [
@@ -511,6 +534,8 @@ function toCourseSummary(course: ManagedCourse): CourseSummary {
     accessLabel: course.accessLabel,
     tag: course.tag,
     promoTag: course.promoTag ?? undefined,
+    seoTitle: course.seoTitle,
+    seoDescription: course.seoDescription,
     featureMetrics: course.featureMetrics,
     isOwned: false,
     progress: 0,
@@ -695,6 +720,8 @@ function toBundleSummary(bundle: ManagedBundle): BundleItem {
     accessLabel: bundle.accessLabel,
     highlight: bundle.highlight,
     includedCourseSlugs: bundle.includedCourseSlugs,
+    seoTitle: bundle.seoTitle,
+    seoDescription: bundle.seoDescription,
     featureMetrics: bundle.featureMetrics,
     tag: bundle.tag ?? undefined,
   };
@@ -711,6 +738,8 @@ function toProductSummary(product: ManagedProduct): ShopItem {
     description: product.description,
     format: product.format,
     accessLabel: product.accessLabel,
+    seoTitle: product.seoTitle,
+    seoDescription: product.seoDescription,
     featureMetrics: product.featureMetrics,
     tag: product.tag ?? undefined,
   };
@@ -751,6 +780,8 @@ function toPublicBlogPost(post: ManagedBlogPost): BlogPost {
     image: post.image,
     category: post.category,
     tags: post.tags,
+    seoTitle: post.seoTitle,
+    seoDescription: post.seoDescription,
   };
 }
 
@@ -921,7 +952,7 @@ async function legacyBlogPosts(): Promise<ManagedBlogPost[]> {
   }));
 }
 
-export async function listManagedCourses() {
+const readManagedCourses = withPublicContentCache('managed-courses', async () => {
   if (!canUseAdminContent()) {
     return legacyCourses();
   }
@@ -937,9 +968,13 @@ export async function listManagedCourses() {
   );
 
   return rows.length > 0 ? rows : legacyCourses();
-}
+});
 
-export async function listManagedBundles() {
+export const listManagedCourses = cache(async function listManagedCourses() {
+  return readManagedCourses();
+});
+
+const readManagedBundles = withPublicContentCache('managed-bundles', async () => {
   if (!canUseAdminContent()) {
     return legacyBundles();
   }
@@ -958,9 +993,13 @@ export async function listManagedBundles() {
   );
 
   return rows.length > 0 ? rows : legacyBundles();
-}
+});
 
-export async function listManagedProducts() {
+export const listManagedBundles = cache(async function listManagedBundles() {
+  return readManagedBundles();
+});
+
+const readManagedProducts = withPublicContentCache('managed-products', async () => {
   if (!canUseAdminContent()) {
     return legacyProducts();
   }
@@ -976,9 +1015,13 @@ export async function listManagedProducts() {
   );
 
   return rows.length > 0 ? rows : legacyProducts();
-}
+});
 
-export async function listManagedBlogPosts() {
+export const listManagedProducts = cache(async function listManagedProducts() {
+  return readManagedProducts();
+});
+
+const readManagedBlogPosts = withPublicContentCache('managed-blog-posts', async () => {
   if (!canUseAdminContent()) {
     return legacyBlogPosts();
   }
@@ -994,7 +1037,11 @@ export async function listManagedBlogPosts() {
   );
 
   return rows.length > 0 ? rows : legacyBlogPosts();
-}
+});
+
+export const listManagedBlogPosts = cache(async function listManagedBlogPosts() {
+  return readManagedBlogPosts();
+});
 
 export async function listSiteSettings() {
   if (!canUseAdminContent()) {
@@ -1020,15 +1067,9 @@ export async function listSiteSettings() {
   }, [] as SiteSettingRecord[]);
 }
 
-export async function listManagedFaqEntries(
-  scope?: ManagedFaqEntry['scope'],
-  scopeSlug?: string,
-) {
+const readManagedFaqEntries = withPublicContentCache('managed-faq-entries', async () => {
   if (!canUseAdminContent()) {
-    return FALLBACK_FAQ_ENTRIES.filter((entry) =>
-      (!scope || entry.scope === scope) &&
-      (!scopeSlug || entry.scopeSlug === scopeSlug),
-    );
+    return FALLBACK_FAQ_ENTRIES;
   }
 
   const rows = await safeTableQuery(
@@ -1041,29 +1082,29 @@ export async function listManagedFaqEntries(
     [] as ManagedFaqEntry[],
   );
 
-  const filtered = rows.filter((entry) =>
+  return rows.length > 0 ? rows : FALLBACK_FAQ_ENTRIES;
+});
+
+export async function listManagedFaqEntries(
+  scope?: ManagedFaqEntry['scope'],
+  scopeSlug?: string,
+) {
+  return (await readManagedFaqEntries()).filter((entry) =>
     (!scope || entry.scope === scope) &&
     (!scopeSlug || entry.scopeSlug === scopeSlug),
   );
-
-  return filtered.length > 0 || rows.length > 0
-    ? filtered
-    : FALLBACK_FAQ_ENTRIES.filter((entry) =>
-        (!scope || entry.scope === scope) &&
-        (!scopeSlug || entry.scopeSlug === scopeSlug),
-      );
 }
 
-export async function listPublishedFaqEntries(
+export const listPublishedFaqEntries = cache(async function listPublishedFaqEntries(
   scope?: ManagedFaqEntry['scope'],
   scopeSlug?: string,
 ) {
   return (await listManagedFaqEntries(scope, scopeSlug))
     .filter((entry) => entry.isPublished)
     .sort((a, b) => a.sortOrder - b.sortOrder);
-}
+});
 
-export async function listManagedHomepageSections() {
+const readManagedHomepageSections = withPublicContentCache('managed-homepage-sections', async () => {
   if (!canUseAdminContent()) {
     return FALLBACK_HOMEPAGE_SECTIONS;
   }
@@ -1079,15 +1120,19 @@ export async function listManagedHomepageSections() {
   );
 
   return rows.length > 0 ? rows : FALLBACK_HOMEPAGE_SECTIONS;
-}
+});
 
-export async function getHomepageSection(sectionKey: string) {
+export const listManagedHomepageSections = cache(async function listManagedHomepageSections() {
+  return readManagedHomepageSections();
+});
+
+export const getHomepageSection = cache(async function getHomepageSection(sectionKey: string) {
   return (await listManagedHomepageSections()).find(
     (section) => section.sectionKey === sectionKey && section.isPublished,
   ) ?? null;
-}
+});
 
-export async function listManagedTestimonials() {
+const readManagedTestimonials = withPublicContentCache('managed-testimonials', async () => {
   if (!canUseAdminContent()) {
     return FALLBACK_TESTIMONIALS;
   }
@@ -1103,45 +1148,66 @@ export async function listManagedTestimonials() {
   );
 
   return rows.length > 0 ? rows : FALLBACK_TESTIMONIALS;
-}
+});
 
-export async function listPublishedTestimonials() {
+export const listManagedTestimonials = cache(async function listManagedTestimonials() {
+  return readManagedTestimonials();
+});
+
+export const listPublishedTestimonials = cache(async function listPublishedTestimonials() {
   return (await listManagedTestimonials())
     .filter((entry) => entry.isPublished)
     .sort((a, b) => a.sortOrder - b.sortOrder);
-}
+});
 
-export async function listManagedAnnouncementBanners() {
-  if (!canUseAdminContent()) {
-    return [] as ManagedAnnouncementBanner[];
-  }
+const readManagedAnnouncementBanners = withPublicContentCache(
+  'managed-announcement-banners',
+  async () => {
+    if (!canUseAdminContent()) {
+      return [] as ManagedAnnouncementBanner[];
+    }
 
-  return safeTableQuery(
-    () =>
-      loadTable(
-        'announcement_banners',
-        toManagedAnnouncementBanner,
-        { select: '*', orderBy: 'sort_order' },
-      ),
-    [] as ManagedAnnouncementBanner[],
-  );
-}
-
-export async function listActiveAnnouncementBanners() {
-  const now = Date.now();
-  return (await listManagedAnnouncementBanners()).filter((banner) => {
-    const startsAt = banner.startsAt ? new Date(banner.startsAt).getTime() : null;
-    const endsAt = banner.endsAt ? new Date(banner.endsAt).getTime() : null;
-
-    return (
-      banner.isActive &&
-      (startsAt === null || startsAt <= now) &&
-      (endsAt === null || endsAt >= now)
+    return safeTableQuery(
+      () =>
+        loadTable(
+          'announcement_banners',
+          toManagedAnnouncementBanner,
+          { select: '*', orderBy: 'sort_order' },
+        ),
+      [] as ManagedAnnouncementBanner[],
     );
-  });
-}
+  },
+  ACTIVE_BANNER_REVALIDATE,
+);
 
-export async function listPublishedCourses() {
+export const listManagedAnnouncementBanners = cache(async function listManagedAnnouncementBanners() {
+  return readManagedAnnouncementBanners();
+});
+
+const readActiveAnnouncementBanners = withPublicContentCache(
+  'active-announcement-banners',
+  async () => {
+    const now = Date.now();
+    return (await readManagedAnnouncementBanners()).filter((banner) => {
+      const startsAt = banner.startsAt ? new Date(banner.startsAt).getTime() : null;
+      const endsAt = banner.endsAt ? new Date(banner.endsAt).getTime() : null;
+
+      return (
+        banner.isActive &&
+        (startsAt === null || startsAt <= now) &&
+        (endsAt === null || endsAt >= now)
+      );
+    });
+  },
+  ACTIVE_BANNER_REVALIDATE,
+);
+
+export const listActiveAnnouncementBanners = cache(async function listActiveAnnouncementBanners() {
+  return readActiveAnnouncementBanners();
+});
+
+
+export const listPublishedCourses = cache(async function listPublishedCourses() {
   const [sheetContent, rows] = await Promise.all([
     fetchSheetCourseContent().catch(() => []),
     listManagedCourses(),
@@ -1158,7 +1224,7 @@ export async function listPublishedCourses() {
       (item) => !rows.some((course) => slugifyCourseTitle(course.title) === item.slug),
     ),
   ]);
-}
+});
 
 export async function getPublishedCourseBySlug(slug: string) {
   const [sheetContent, rows] = await Promise.all([
@@ -1175,14 +1241,14 @@ export async function getPublishedCourseBySlug(slug: string) {
   return course ? toCourseSummary(course) : null;
 }
 
-export async function listFeaturedCourses() {
+export const listFeaturedCourses = cache(async function listFeaturedCourses() {
   return (await listManagedCourses())
     .filter((course) => course.isPublished && course.isFeatured)
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map(toCourseSummary);
-}
+});
 
-export async function listPublishedBundles() {
+export const listPublishedBundles = cache(async function listPublishedBundles() {
   const [sheetItems, rows] = await Promise.all([
     fetchSheetMixedContent().catch(() => []),
     listManagedBundles(),
@@ -1202,7 +1268,7 @@ export async function listPublishedBundles() {
       .filter((item) => !rows.some((bundle) => bundle.slug === item.slug || slugifyCourseTitle(bundle.title) === item.slug))
       .map(sheetBundleToSummary),
   ]);
-}
+});
 
 export async function getPublishedBundleBySlug(slug: string) {
   const [sheetItems, rows] = await Promise.all([
@@ -1220,7 +1286,7 @@ export async function getPublishedBundleBySlug(slug: string) {
   return sheetItem ? sheetBundleToSummary(sheetItem) : null;
 }
 
-export async function listPublishedProducts() {
+export const listPublishedProducts = cache(async function listPublishedProducts() {
   const [sheetItems, rows] = await Promise.all([
     fetchSheetMixedContent().catch(() => []),
     listManagedProducts(),
@@ -1240,6 +1306,91 @@ export async function listPublishedProducts() {
       .filter((item) => !rows.some((product) => product.slug === item.slug || slugifyCourseTitle(product.title) === item.slug))
       .map(sheetProductToSummary),
   ]);
+});
+
+export function getCourseSeoRiskReason(course: CourseSummary) {
+  const entity = courseToSeoEntity(course);
+  return getSeoRiskReason({
+    title: entity.title,
+    slug: entity.slug,
+    category: entity.category,
+    description: entity.description,
+    type: entity.kind,
+  });
+}
+
+export function getBundleSeoRiskReason(bundle: BundleItem) {
+  const entity = bundleToSeoEntity(bundle);
+  return getSeoRiskReason({
+    title: entity.title,
+    slug: entity.slug,
+    category: entity.category,
+    description: entity.description,
+    type: entity.kind,
+  });
+}
+
+export function getProductSeoRiskReason(product: ShopItem) {
+  const entity = productToSeoEntity(product);
+  return getSeoRiskReason({
+    title: entity.title,
+    slug: entity.slug,
+    category: entity.category,
+    description: entity.description,
+    type: entity.kind,
+  });
+}
+
+export function isCourseSeoIndexable(course: CourseSummary) {
+  return !getCourseSeoRiskReason(course);
+}
+
+export function isBundleSeoIndexable(bundle: BundleItem) {
+  return !getBundleSeoRiskReason(bundle);
+}
+
+export function isProductSeoIndexable(product: ShopItem) {
+  return !getProductSeoRiskReason(product);
+}
+
+export const listSeoCourses = cache(async function listSeoCourses() {
+  return (await listPublishedCourses()).filter(isCourseSeoIndexable);
+});
+
+export const listSeoBundles = cache(async function listSeoBundles() {
+  return (await listPublishedBundles()).filter(isBundleSeoIndexable);
+});
+
+export const listSeoProducts = cache(async function listSeoProducts() {
+  return (await listPublishedProducts()).filter(isProductSeoIndexable);
+});
+
+export async function listSeoCatalogEntities() {
+  const [courses, bundles, products] = await Promise.all([
+    listSeoCourses(),
+    listSeoBundles(),
+    listSeoProducts(),
+  ]);
+
+  return [
+    ...courses.map(courseToSeoEntity),
+    ...bundles.map(bundleToSeoEntity),
+    ...products.map(productToSeoEntity),
+  ];
+}
+
+export const listSeoCategories = cache(async function listSeoCategories(): Promise<SeoCategory[]> {
+  const [courses, bundles, products] = await Promise.all([
+    listPublishedCourses(),
+    listPublishedBundles(),
+    listPublishedProducts(),
+  ]);
+
+  return deriveSeoCategories({ courses, bundles, products });
+});
+
+export async function getSeoCategoryBySlug(slug: string) {
+  return (await listSeoCategories()).find((category) => category.slug === slug) ?? null;
 }
 
 export async function getPublishedProductBySlug(slug: string) {
@@ -1258,18 +1409,405 @@ export async function getPublishedProductBySlug(slug: string) {
   return sheetItem ? sheetProductToSummary(sheetItem) : null;
 }
 
-export async function listPublishedBlogPosts() {
-  return (await listManagedBlogPosts())
+const GENERATED_BLOG_AUTHOR = 'দেশি কোর্স কনটেন্ট টিম';
+const GENERATED_BLOG_DATE = '২৫ এপ্রিল, ২০২৬';
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function renderList(items: string[], ordered = false) {
+  const cleanItems = items.filter(Boolean).map(escapeHtml);
+  const tag = ordered ? 'ol' : 'ul';
+  return `<${tag}>${cleanItems.map((item) => `<li>${item}</li>`).join('')}</${tag}>`;
+}
+
+function renderFaq(items: Array<{ question: string; answer: string }>) {
+  return `
+    <h2>Common questions</h2>
+    ${items
+      .map(
+        (item) =>
+          `<h3>${escapeHtml(item.question)}</h3><p>${escapeHtml(item.answer)}</p>`,
+      )
+      .join('')}
+  `;
+}
+
+function generatedPost({
+  slug,
+  title,
+  excerpt,
+  content,
+  image,
+  category,
+  tags,
+}: Omit<BlogPost, 'id' | 'author' | 'date'>): BlogPost {
+  return {
+    id: `generated-${slug}`,
+    slug,
+    title,
+    excerpt: clampSeoDescription(excerpt, title),
+    content: sanitizeRichHtml(content),
+    author: GENERATED_BLOG_AUTHOR,
+    date: GENERATED_BLOG_DATE,
+    image,
+    category,
+    tags: [...new Set(tags.filter(Boolean))],
+  };
+}
+
+function buildCourseSeoBlogPost(course: CourseSummary) {
+  const priceLine =
+    course.price === 0
+      ? `${course.title} বর্তমানে free course হিসেবে listed আছে।`
+      : `${course.title} course price ৳${course.price}; checkout-এর আগে course page থেকে current access details দেখে নেওয়া উচিত।`;
+  const faq = [
+    {
+      question: `${course.title} কার জন্য?`,
+      answer: `${course.category} skill practicalভাবে শিখতে চান এমন learner, student, freelancer বা operator-এর জন্য এটি relevant হতে পারে।`,
+    },
+    {
+      question: `Access কীভাবে পাব?`,
+      answer:
+        course.price === 0
+          ? 'Free course হলে course page থেকে enrollment বা access instruction follow করতে হবে।'
+          : 'Payment complete করার পরে dashboard/support flow অনুযায়ী access দেওয়া হয়।',
+    },
+    {
+      question: `দাম কত?`,
+      answer: priceLine,
+    },
+  ];
+
+  return generatedPost({
+    slug: `${course.slug}-course-guide`,
+    title: `${course.title}: কী শিখবেন, কার জন্য, এবং কীভাবে শুরু করবেন`,
+    excerpt: `${course.title} course-এর real catalog information, access, learning fit, key benefits এবং শুরু করার practical guide।`,
+    image: course.image,
+    category: 'কোর্স গাইড',
+    tags: [course.title, course.category, 'Bangla Course', 'Deshi Course'],
+    content: `
+      <p><strong>Direct answer:</strong> ${escapeHtml(course.title)} হলো ${escapeHtml(course.category)} category-এর একটি বাংলা online course, যা ${escapeHtml(course.accessLabel)} access model সহ listed আছে।</p>
+      <h2>${escapeHtml(course.title)} কী?</h2>
+      <p>${escapeHtml(course.title)} course page-এর visible catalog data অনুযায়ী এটি ${escapeHtml(course.category)} skill শেখার জন্য সাজানো। Learner যেন offer, access এবং key inclusions আগে বুঝে সিদ্ধান্ত নিতে পারে, এই guide সেই context দেয়।</p>
+      <h2>এই কোর্সে কী কী আছে?</h2>
+      ${renderList(course.featureMetrics.slice(0, 6))}
+      <h2>কারা এই course consider করবেন?</h2>
+      ${renderList([
+        `${course.category} topic নিয়ে structured Bangla learning চান এমন learner।`,
+        `যারা ${course.title} related practical workflow বুঝে শুরু করতে চান।`,
+        'যারা checkout-এর আগে access, support এবং value points পরিষ্কারভাবে compare করতে চান।',
+      ])}
+      <h2>কীভাবে শুরু করবেন?</h2>
+      ${renderList([
+        `${course.title} course page খুলে details, price এবং access note দেখুন।`,
+        'নিজের skill level ও সময়ের সাথে course fit করে দেখুন।',
+        'প্রশ্ন থাকলে contact/support channel ব্যবহার করুন।',
+      ], true)}
+      <h2>Pricing ও access</h2>
+      <p>${escapeHtml(priceLine)} Access label: ${escapeHtml(course.accessLabel)}।</p>
+      ${renderFaq(faq)}
+      <h2>পরের ধাপ</h2>
+      <p><a href="/courses/${course.slug}">${escapeHtml(course.title)} course details</a> দেখে current offer, access এবং support information মিলিয়ে সিদ্ধান্ত নিন।</p>
+    `,
+  });
+}
+
+function buildBundleSeoBlogPost(bundle: BundleItem, courses: CourseSummary[]) {
+  const includedCourses = bundle.includedCourseSlugs
+    .map((courseSlug) => courses.find((course) => course.slug === courseSlug)?.title)
+    .filter((title): title is string => Boolean(title));
+  const faq = [
+    {
+      question: `${bundle.title} bundle-এ কী আছে?`,
+      answer: `${bundle.title} bundle page-এর visible data অনুযায়ী ${bundle.highlight} offer এবং ${bundle.accessLabel} access model আছে।`,
+    },
+    {
+      question: `Bundle price কত?`,
+      answer: `Current listed bundle price ৳${bundle.bundlePrice}।`,
+    },
+    {
+      question: `এটি কার জন্য useful?`,
+      answer: 'যারা related course/resource একসাথে নিয়ে faster learning বা execution flow চান, তাদের জন্য bundle format useful হতে পারে।',
+    },
+  ];
+
+  return generatedPost({
+    slug: `${bundle.slug}-bundle-guide`,
+    title: `${bundle.title}: bundle value, included items এবং কার জন্য useful`,
+    excerpt: `${bundle.title} bundle-এর included course/resource, price, access এবং practical use-case নিয়ে trust-first guide।`,
+    image: bundle.image,
+    category: 'বান্ডেল গাইড',
+    tags: [bundle.title, bundle.highlight, 'Bundle Offer', 'Deshi Course'],
+    content: `
+      <p><strong>Direct answer:</strong> ${escapeHtml(bundle.title)} হলো ${escapeHtml(bundle.highlight)} type-এর bundle offer, যার listed price ৳${bundle.bundlePrice} এবং access label ${escapeHtml(bundle.accessLabel)}।</p>
+      <h2>এই bundle কেন consider করবেন?</h2>
+      <p>${escapeHtml(bundle.subtitle || `${bundle.title} related learning/resource একসাথে নেওয়ার option।`)}</p>
+      <h2>Bundle-এ কী কী থাকছে?</h2>
+      ${renderList(bundle.featureMetrics.slice(0, 6))}
+      ${
+        includedCourses.length > 0
+          ? `<h2>Included course</h2>${renderList(includedCourses.slice(0, 8))}`
+          : ''
+      }
+      <h2>কারা fastest value পেতে পারেন?</h2>
+      ${renderList([
+        'একই skill-stack-এর course/resource একসাথে নিতে চান এমন learner।',
+        'Freelancer, creator বা operator যারা setup time কমাতে চান।',
+        'যারা single checkout-এ multiple related item access করতে চান।',
+      ])}
+      <h2>কীভাবে ব্যবহার করবেন?</h2>
+      ${renderList([
+        'Bundle page থেকে included item এবং access terms দেখুন।',
+        'প্রথমে core course/resource দিয়ে foundation ধরুন।',
+        'তারপর included assets নিজের workflow-এ apply করুন।',
+      ], true)}
+      ${renderFaq(faq)}
+      <h2>পরের ধাপ</h2>
+      <p><a href="/bundles/${bundle.slug}">${escapeHtml(bundle.title)} bundle details</a> দেখে current offer verify করুন।</p>
+    `,
+  });
+}
+
+function buildProductSeoBlogPost(product: ShopItem) {
+  const faq = [
+    {
+      question: `${product.title} কী?`,
+      answer: `${product.title} হলো ${product.type} type-এর digital product/resource।`,
+    },
+    {
+      question: `Delivery format কী?`,
+      answer: `Current listed format: ${product.format}; access label: ${product.accessLabel}।`,
+    },
+    {
+      question: `Price কত?`,
+      answer: `Current listed price ৳${product.price}।`,
+    },
+  ];
+
+  return generatedPost({
+    slug: `${product.slug}-resource-guide`,
+    title: `${product.title}: কী, কীভাবে ব্যবহার করবেন এবং কার জন্য useful`,
+    excerpt: `${product.title} digital resource-এর format, access, price, use-case এবং কেনার আগে যা জানা দরকার।`,
+    image: product.image,
+    category: 'প্রোডাক্ট গাইড',
+    tags: [product.title, product.type, 'Digital Product', 'Deshi Course'],
+    content: `
+      <p><strong>Direct answer:</strong> ${escapeHtml(product.title)} হলো ${escapeHtml(product.type)} category-এর একটি digital product/resource, যার listed price ৳${product.price} এবং format ${escapeHtml(product.format)}।</p>
+      <h2>${escapeHtml(product.title)} কী?</h2>
+      <p>${escapeHtml(product.description || `${product.title} একটি practical digital resource।`)}</p>
+      <h2>এই resource-এ কী পাবেন?</h2>
+      ${renderList(product.featureMetrics.slice(0, 6))}
+      <h2>কাদের জন্য useful?</h2>
+      ${renderList([
+        `${product.type} resource দরকার এমন creator, freelancer বা operator।`,
+        'যারা ready-made asset/resource দিয়ে setup time কমাতে চান।',
+        'যারা checkout-এর আগে format, access এবং price clear করতে চান।',
+      ])}
+      <h2>কীভাবে ব্যবহার শুরু করবেন?</h2>
+      ${renderList([
+        'Product page থেকে current feature list এবং format দেখুন।',
+        'নিজের use-case-এর সাথে মিল আছে কি না verify করুন।',
+        'প্রশ্ন থাকলে support/contact channel ব্যবহার করুন।',
+      ], true)}
+      ${renderFaq(faq)}
+      <h2>পরের ধাপ</h2>
+      <p><a href="${templatePath(product.slug)}">${escapeHtml(product.title)} product details</a> দেখে current access information verify করুন।</p>
+    `,
+  });
+}
+
+function buildCategorySeoBlogPost(category: SeoCategory) {
+  const topItems = category.items.slice(0, 6);
+
+  return generatedPost({
+    slug: `${category.slug}-guide`,
+    title: `${category.title}: কোন item বেছে নেবেন এবং কীভাবে compare করবেন`,
+    excerpt: `${category.title} category-এর real catalog items, comparison points, use-case এবং next-step guide।`,
+    image: topItems[0]?.image || '/hero.webp',
+    category: 'ক্যাটাগরি গাইড',
+    tags: [category.name, category.title, 'Deshi Course'],
+    content: `
+      <p><strong>Direct answer:</strong> ${escapeHtml(category.title)} page-এ ${topItems.length}টি relevant catalog item দেখা যায়, যেগুলো price, access, format এবং use-case অনুযায়ী compare করা উচিত।</p>
+      <h2>${escapeHtml(category.title)} category কী ধরনের learner-এর জন্য?</h2>
+      <p>${escapeHtml(category.description)}</p>
+      <h2>প্রথমে কোন বিষয়গুলো compare করবেন?</h2>
+      ${renderList([
+        'আপনার current skill level এবং learning goal।',
+        'Price, access label এবং delivery/support model।',
+        'Feature list real use-case-এর সাথে মেলে কি না।',
+        'Course, bundle না template/resource - কোন format আপনার দরকার।',
+      ], true)}
+      <h2>এই category-এর selected items</h2>
+      <ul>${topItems
+        .map(
+          (item) =>
+            `<li><a href="${item.path}">${escapeHtml(item.title)}</a> - ${escapeHtml(item.category)}${item.price !== undefined ? `, price ${escapeHtml(String(item.price))} BDT` : ''}</li>`,
+        )
+        .join('')}</ul>
+      ${renderFaq([
+        {
+          question: `${category.title} থেকে কীভাবে best item বেছে নেব?`,
+          answer: 'প্রথমে goal, budget, access type এবং required format মিলিয়ে shortlist করুন। তারপর item detail page-এর visible feature list পড়ুন।',
+        },
+        {
+          question: `এই category-এর সব item কি একই ধরনের?`,
+          answer: 'না। কিছু course, কিছু bundle বা template/resource হতে পারে। তাই detail page দেখে সিদ্ধান্ত নেওয়া ভালো।',
+        },
+      ])}
+      <h2>পরের ধাপ</h2>
+      <p><a href="${category.path}">${escapeHtml(category.title)} category page</a> খুলে related itemগুলো compare করুন।</p>
+    `,
+  });
+}
+
+function buildServiceSeoBlogPosts() {
+  const servicePosts = [
+    {
+      slug: 'deshi-course-certificate-access-guide',
+      title: 'দেশি কোর্স certificate access: কোন course-এ কীভাবে verify করবেন',
+      excerpt:
+        'Certificate availability courseভেদে আলাদা হতে পারে; enrollment-এর আগে কোথায় কী check করবেন তার clear guide।',
+      image: '/logo.webp',
+      category: 'সাপোর্ট গাইড',
+      tags: ['Certificate', 'Course Access', 'Deshi Course'],
+      content: `
+        <p><strong>Direct answer:</strong> দেশি কোর্সে certificate বা completion proof থাকলে সেটি নির্দিষ্ট course/offer detail-এ উল্লেখ থাকবে। সব course-এর জন্য একই certificate claim ধরে নেওয়া উচিত নয়।</p>
+        <h2>Certificate নিয়ে কী check করবেন?</h2>
+        ${renderList([
+          'Course detail page-এ certificate বা completion proof mention আছে কি না।',
+          'Support/contact channel-এ current policy verify করা।',
+          'Payment-এর আগে access, delivery এবং support terms মিলিয়ে দেখা।',
+        ], true)}
+        ${renderFaq([
+          {
+            question: 'সব course-এ certificate আছে?',
+            answer: 'না ধরে নেওয়াই safe। নির্দিষ্ট course page বা support team থেকে current availability verify করা উচিত।',
+          },
+          {
+            question: 'Certificate দরকার হলে কী করব?',
+            answer: 'Checkout করার আগে course page এবং contact/support channel দিয়ে certificate availability confirm করুন।',
+          },
+        ])}
+        <h2>পরের ধাপ</h2>
+        <p><a href="/services/certification">Certificate information page</a> এবং <a href="/courses">course catalog</a> দেখে current offer verify করুন।</p>
+      `,
+    },
+    {
+      slug: 'deshi-course-support-guide',
+      title: 'দেশি কোর্স support guide: course access, payment ও delivery help কোথায় পাবেন',
+      excerpt:
+        'Course access, payment, delivery বা account issue হলে কোন support channel ব্যবহার করবেন তার practical guide।',
+      image: '/logo.webp',
+      category: 'সাপোর্ট গাইড',
+      tags: ['Support', 'Payment Help', 'Course Access'],
+      content: `
+        <p><strong>Direct answer:</strong> দেশি কোর্সে support-এর জন্য contact page, WhatsApp, Messenger এবং email channel ব্যবহার করা যায়। Payment বা access issue হলে order/account details প্রস্তুত রাখুন।</p>
+        <h2>কোন issue-তে কোথায় যাবেন?</h2>
+        ${renderList([
+          'Payment বা checkout issue হলে contact form বা WhatsApp ব্যবহার করুন।',
+          'Course/resource access issue হলে account email এবং order detail দিন।',
+          'General question হলে FAQ page আগে দেখে নিতে পারেন।',
+        ], true)}
+        ${renderFaq([
+          {
+            question: 'Support নিতে কী তথ্য লাগবে?',
+            answer: 'আপনার account email, order/payment reference এবং কোন item নিয়ে issue হচ্ছে তা জানালে দ্রুত help পাওয়া যায়।',
+          },
+          {
+            question: 'কোথা থেকে contact করব?',
+            answer: 'Contact page-এ email, WhatsApp, Facebook এবং Messenger link দেওয়া আছে।',
+          },
+        ])}
+        <h2>পরের ধাপ</h2>
+        <p><a href="/contact">Contact page</a> অথবা <a href="/faq">FAQ page</a> থেকে support path বেছে নিন।</p>
+      `,
+    },
+    {
+      slug: 'deshi-course-refund-policy-guide',
+      title: 'দেশি কোর্স refund policy: payment করার আগে কী জানা দরকার',
+      excerpt:
+        'Refund request কখন বিবেচনা হতে পারে এবং কখন digital access delivery হওয়ার পর refund প্রযোজ্য নয় - তার plain-language guide।',
+      image: '/logo.webp',
+      category: 'পলিসি গাইড',
+      tags: ['Refund Policy', 'Terms', 'Payment'],
+      content: `
+        <p><strong>Direct answer:</strong> Payment complete হওয়ার পর যদি course/resource access বা delivery link এখনো দেওয়া না হয়ে থাকে, যাচাই সাপেক্ষে refund request বিবেচনা হতে পারে। Access/link/resource/share/group entry দেওয়া হলে refund প্রযোজ্য নয়।</p>
+        <h2>Refund request করার আগে কী check করবেন?</h2>
+        ${renderList([
+          'Access বা delivery already হয়েছে কি না।',
+          'আপনার payment/order reference আছে কি না।',
+          'Policy page-এর latest wording পড়ে নেওয়া।',
+        ], true)}
+        ${renderFaq([
+          {
+            question: 'Delivery হয়ে গেলে refund হবে?',
+            answer: 'Current policy অনুযায়ী access/link/resource/share/group entry দেওয়া হলে refund প্রযোজ্য নয়।',
+          },
+          {
+            question: 'Refund request কোথায় করব?',
+            answer: 'Contact page-এর support channel দিয়ে order detailসহ যোগাযোগ করুন।',
+          },
+        ])}
+        <h2>পরের ধাপ</h2>
+        <p><a href="/refund-policy">Refund policy</a> এবং <a href="/terms">terms page</a> পড়ে checkout decision নিন।</p>
+      `,
+    },
+  ];
+
+  return servicePosts.map(generatedPost);
+}
+
+async function listGeneratedSeoBlogPosts(): Promise<BlogPost[]> {
+  const [courses, bundles, products, categories] = await Promise.all([
+    listSeoCourses(),
+    listSeoBundles(),
+    listSeoProducts(),
+    listSeoCategories(),
+  ]);
+
+  return [
+    ...courses.map(buildCourseSeoBlogPost),
+    ...bundles.map((bundle) => buildBundleSeoBlogPost(bundle, courses)),
+    ...products.map(buildProductSeoBlogPost),
+    ...categories.map(buildCategorySeoBlogPost),
+    ...buildServiceSeoBlogPosts(),
+  ];
+}
+
+export const listPublishedBlogPosts = cache(async function listPublishedBlogPosts() {
+  const managedPosts = await listManagedBlogPosts();
+  const managedSlugs = new Set(managedPosts.map((post) => post.slug));
+  const publishedManagedPosts = managedPosts
     .filter((post) => post.isPublished)
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map(toPublicBlogPost);
-}
+  const generatedPosts = (await listGeneratedSeoBlogPosts()).filter(
+    (post) => !managedSlugs.has(post.slug),
+  );
+
+  return [...publishedManagedPosts, ...generatedPosts].map((post, index) => ({
+    ...post,
+    id: post.id || String(index + 1),
+  }));
+});
 
 export async function getPublishedBlogPostBySlug(slug: string) {
-  const post = (await listManagedBlogPosts()).find(
-    (entry) => entry.slug === slug && entry.isPublished,
+  const managedPost = (await listManagedBlogPosts()).find(
+    (entry) => entry.slug === slug,
   );
-  return post ? toPublicBlogPost(post) : null;
+
+  if (managedPost) {
+    return managedPost.isPublished ? toPublicBlogPost(managedPost) : null;
+  }
+
+  return (await listGeneratedSeoBlogPosts()).find((post) => post.slug === slug) ?? null;
 }
 
 function buildGenericCourseDetail(
